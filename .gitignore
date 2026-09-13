@@ -9,7 +9,7 @@ build/
 .vscode/
 .settings/
 .classpath
-.projectgit status --short
+.project
 *.swp
 
 # Minecraft 运行环境

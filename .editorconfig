@@ -1,0 +1,8 @@
+# EditorConfig: https://editorconfig.org
+# 统一字符编码为 UTF-8，避免中文注释在别的编辑器或系统区域设置（GBK）下显示为乱码。
+# .properties 文件同样被 [*] 覆盖——这一点很重要，因为 Java 的 Properties 规范
+# 默认按 ISO-8859-1 解读，不少编辑器会把 *.properties 的默认编码单独设成非 UTF-8。
+root = true
+
+[*]
+charset = utf-8
