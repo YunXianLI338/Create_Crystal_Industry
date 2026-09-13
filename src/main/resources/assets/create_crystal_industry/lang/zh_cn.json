@@ -132,7 +132,7 @@
     "create_crystal_industry.ponder.accelerator_electric.header": "电力催生器的使用",
     "create_crystal_industry.ponder.accelerator_electric.text_1": "催生器有电力和动力两种类型：这台电力催生器消耗 FE 能量，而动力催生器消耗旋转力。",
     "create_crystal_industry.ponder.accelerator_electric.text_2": "通入 FE 后它便会启动：每刻都会对六个相邻方块各施加一次随机刻。",
-    "create_crystal_industry.ponder.accelerator_electric.text_3": "随机刻驱动的远不止晶簇生长：作物、树苗、茎……一切依赖随机刻的机制都会被加速，而不只是母岩。",
+    "create_crystal_industry.ponder.accelerator_electric.text_3": "随机刻驱动的远不止晶簇生长：作物、树苗、铜锈蚀……一切依赖随机刻的机制都会被加速，而不只是母岩。",
     "create_crystal_industry.ponder.accelerator_electric.text_4": "由于六个面会同时获得随机刻，一台催生器就能同时催生周围的多块母岩。",
     
     "create_crystal_industry.ponder.accelerator_mechanical.header": "动力催生器的使用",
