@@ -1,6 +1,7 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.echo;
 
 import com.minecart.yunxian.item.EchoSpyglassItem;
+import com.minecart.yunxian.client.ModRenderTypes;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

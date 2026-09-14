@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.mechanical;
 
 import com.minecart.yunxian.block.SmartDrillBlock;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;

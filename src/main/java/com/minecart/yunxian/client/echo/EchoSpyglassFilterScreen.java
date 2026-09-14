@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.echo;
 
 import com.google.common.collect.ImmutableList;
 import com.minecart.yunxian.Yunxian;

@@ -1,7 +1,7 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.nightvision;
 
 import com.minecart.yunxian.Yunxian;
-import com.minecart.yunxian.client.model.NightVisionGogglesModel;
+import com.minecart.yunxian.client.nightvision.model.NightVisionGogglesModel;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;

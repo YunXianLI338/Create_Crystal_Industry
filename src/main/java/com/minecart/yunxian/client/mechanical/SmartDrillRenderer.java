@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.mechanical;
 
 import com.minecart.yunxian.blockentity.SmartDrillBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;

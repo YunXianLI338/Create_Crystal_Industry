@@ -1,7 +1,7 @@
 package com.minecart.yunxian.network;
 
 import com.minecart.yunxian.Yunxian;
-import com.minecart.yunxian.client.EchoHighlightClient;
+import com.minecart.yunxian.client.echo.EchoHighlightClient;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;

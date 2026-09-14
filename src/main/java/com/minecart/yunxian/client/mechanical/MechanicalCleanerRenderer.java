@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.mechanical;
 
 import com.minecart.yunxian.blockentity.MechanicalCleanerBlockEntity;
 import com.minecart.yunxian.blockentity.MechanicalCleanerBlockEntity.SuckPhantom;

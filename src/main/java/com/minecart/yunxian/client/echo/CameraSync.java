@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.echo;
 
 import com.minecart.yunxian.network.CameraModePayload;
 import net.minecraft.client.Minecraft;

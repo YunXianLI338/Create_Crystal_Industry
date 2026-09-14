@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.minecart.yunxian.client.SmartDrillActorVisual;
+import com.minecart.yunxian.client.mechanical.SmartDrillActorVisual;
 import com.simibubi.create.content.contraptions.render.ActorVisual;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;

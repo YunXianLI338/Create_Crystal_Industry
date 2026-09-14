@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client.model;
+package com.minecart.yunxian.client.nightvision.model;
 
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.mojang.blaze3d.vertex.PoseStack;

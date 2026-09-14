@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.echo;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;

@@ -1,8 +1,9 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.nightvision;
 
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.util.NightVisionWearHelper;
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.client.ModKeybinds;
 import com.minecart.yunxian.network.NightVisionTogglePayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;

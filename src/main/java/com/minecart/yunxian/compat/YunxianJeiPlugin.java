@@ -1,7 +1,7 @@
 package com.minecart.yunxian.compat;
 
 import com.minecart.yunxian.Yunxian;
-import com.minecart.yunxian.client.EchoSpyglassFilterScreen;
+import com.minecart.yunxian.client.echo.EchoSpyglassFilterScreen;
 import com.minecart.yunxian.item.EchoSpyglassItem;
 import com.minecart.yunxian.network.SetFilterPayload;
 import com.mojang.logging.LogUtils;

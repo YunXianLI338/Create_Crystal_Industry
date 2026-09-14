@@ -1,4 +1,4 @@
-package com.minecart.yunxian.client;
+package com.minecart.yunxian.client.nightvision;
 
 import com.minecart.yunxian.util.NightVisionWearHelper;
 import com.minecart.yunxian.Yunxian;

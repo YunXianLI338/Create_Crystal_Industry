@@ -2,6 +2,8 @@ package com.minecart.yunxian.client;
 
 import com.minecart.yunxian.registry.ModMenus;
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.client.echo.EchoSpyglassFilterScreen;
+import com.minecart.yunxian.client.mechanical.MechanicalCleanerScreen;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
