@@ -1,12 +1,11 @@
 package com.minecart.yunxian.registry;
 
-import appeng.api.AECapabilities;
 import com.minecart.yunxian.*;
 import com.minecart.yunxian.blockentity.*;
 import com.minecart.yunxian.blockentity.budding.BuddingGrowthBlockEntity;
 import com.minecart.yunxian.blockentity.budding.EchoConvertingBuddingBlockEntity;
 import com.minecart.yunxian.blockentity.budding.FlammableIceBuddingBlockEntity;
-import com.minecart.yunxian.blockentity.budding.FluixBuddingBlockEntity;
+import com.minecart.yunxian.integration.ae2.AE2BlockEntities;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -81,24 +80,22 @@ public final class ModBlockEntities {
                         buddingBlocks.toArray(new Block[0])).build(null);
             });
 
-    public static final Supplier<BlockEntityType<FluixBuddingBlockEntity>> FLUIX_BUDDING;
+    // ★ 软依赖：类型刻意写成 BlockEntityType<?>，避免 FluixBuddingBlockEntity
+    // 出现在本常驻类的任何签名/描述符中（否则 JVM 校验时会去加载 AE2 类型而崩溃）。
+    // 真正的 AE2 引用全部封装在 AE2BlockEntities 内。
+    public static final Supplier<BlockEntityType<?>> FLUIX_BUDDING;
 
     static {
         if (ModBlocks.AE2_LOADED && ModBlocks.FLUIX_BUDDING != null) {
-            FLUIX_BUDDING = BLOCK_ENTITIES.register("fluix_budding", () -> BlockEntityType.Builder.of(
-                    (pos, state) -> FluixBuddingBlockEntity.create(pos, state),
-                    ModBlocks.FLUIX_BUDDING.get()
-            ).build(null));
+            FLUIX_BUDDING = AE2BlockEntities.registerFluix(
+                    BLOCK_ENTITIES, () -> ModBlocks.FLUIX_BUDDING.get());
         } else {
             FLUIX_BUDDING = null;
         }
     }
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
         if (FLUIX_BUDDING != null) {
-            event.registerBlockEntity(
-                    AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                    FLUIX_BUDDING.get(),
-                    (blockEntity, context) -> blockEntity);
+            AE2BlockEntities.registerCapabilities(event, FLUIX_BUDDING);
         }
     }
 
