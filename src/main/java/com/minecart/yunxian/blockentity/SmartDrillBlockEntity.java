@@ -171,12 +171,36 @@ public class SmartDrillBlockEntity extends DrillBlockEntity {
     /** 精准模式挖掘速度倍率 */
     private static final float PRECISE_SPEED_MULTIPLIER = 1.0f;
 
+    /** 原版钻头破坏方块后重新判定目标的间隔（即 lazyTickRate 的默认值） */
+    private static final int VANILLA_REARM_INTERVAL = 10;
+
+    /** 已写入 lazyTickRate 的重新判定间隔，-1 表示尚未写入过 */
+    private int appliedRearmInterval = -1;
+
     @Override
     protected float getBreakSpeed() {
-        float base = super.getBreakSpeed();
-        if (filtering == null || filtering.getMode() == SmartDrillBlockEntity.DrillMode.NORMAL)
-            return base * NORMAL_SPEED_MULTIPLIER;
-        return base * PRECISE_SPEED_MULTIPLIER;
+        return super.getBreakSpeed() * getSpeedMultiplier();
+    }
+
+    private float getSpeedMultiplier() {
+        return filtering == null || filtering.getMode() == DrillMode.NORMAL
+                ? NORMAL_SPEED_MULTIPLIER
+                : PRECISE_SPEED_MULTIPLIER;
+    }
+
+    /**
+     * 原版钻头破坏方块后把 ticksUntilNextProgress 置为 -1，要等下一次 lazyTick（默认每 10 tick）
+     * 才重新判定目标。这段空转与转速无关，挖掘越快占比越大。
+     * 刷石机这类"方块被流体持续补料、钻头反复采集同一个方块"的结构里，它就是纯粹的节流：
+     * 方块越软，2 倍速被吃掉得越多，甚至完全抵消（只剩破坏动画快一倍，产量却一样）。
+     * 因此让重新判定间隔也按倍率缩短，使采集循环（空转 + 挖掘）整体一起减半。
+     */
+    private void updateRearmInterval() {
+        int interval = Math.max(1, (int) (VANILLA_REARM_INTERVAL / getSpeedMultiplier()));
+        if (interval == appliedRearmInterval)
+            return;
+        appliedRearmInterval = interval;
+        setLazyTickRate(interval);
     }
 
     /**
@@ -217,6 +241,8 @@ public class SmartDrillBlockEntity extends DrillBlockEntity {
 
         if (level == null || level.isClientSide)
             return;
+
+        updateRearmInterval();
 
         boolean blocked = isBreakingBlocked() || isRedstoneLocked();
 
