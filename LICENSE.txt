@@ -1,4 +1,74 @@
-Copyright (c) 2026 YunXian_LI
-All Rights Reserved.
+Create: Crystal Industry (机械动力：晶簇工业)
+Copyright (c) 2026 YunXian_LI. All Rights Reserved.
 
-该软件未授权用于分发、修改或商业用途，除非获得作者的明确书面许可。
+Official download page: https://www.curseforge.com/minecraft/mc-mods/create-crystal-industry
+
+================================================================================
+ENGLISH
+================================================================================
+
+All rights are reserved by the author, except for the permissions expressly
+granted below.
+
+1. PERMISSION — MODPACKS
+
+   You MAY include this mod, unmodified, in any modpack — public or private,
+   free or monetized (including ad revenue, donation perks, or platform reward
+   points) — without asking for permission and without paying any fee.
+
+2. CONDITION — ATTRIBUTION
+
+   You MUST credit the author "YunXian_LI" and link to the official download
+   page listed above. The credit must appear in the modpack's description, mod
+   list, or credits section.
+
+3. NOT GRANTED
+
+   This permission does NOT cover:
+     a) Redistributing this mod as a standalone download, or re-uploading it
+        to any site other than the official download page.
+     b) Redistributing modified, decompiled, or recompiled versions of it.
+     c) Selling this mod itself, or any product whose primary value is this mod.
+     d) Claiming authorship of this mod or any part of it.
+
+   Any of the above requires the author's prior written permission.
+
+4. NO WARRANTY
+
+   THIS MOD IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT
+   OF OR IN CONNECTION WITH THIS MOD OR THE USE OF THIS MOD.
+
+================================================================================
+简体中文
+================================================================================
+
+除下列明确授予的许可外，作者保留所有权利。
+
+1. 许可 —— 整合包
+
+   你可以将本模组以**未经修改**的形式收录进任何整合包（公开或私有、免费或
+   盈利，包括广告收入、赞助者福利、平台积分等），无需另行申请，也无需支付
+   任何费用。
+
+2. 条件 —— 署名
+
+   你**必须**在整合包的介绍、模组列表或鸣谢中署名作者 "YunXian_LI"，并附上
+   上方所列的官方发布页链接。
+
+3. 未授予的权利
+
+   上述许可**不包含**：
+     a) 将本模组作为独立下载分发，或转载至官方发布页以外的任何站点；
+     b) 分发本模组的修改版、反编译版或重新编译版；
+     c) 售卖本模组本身，或售卖任何主要价值来自本模组的产品；
+     d) 声称对本模组或其任何部分拥有著作权。
+
+   以上任何一项均需获得作者事先的书面许可。
+
+4. 免责声明
+
+   本模组按"现状"提供，不附带任何明示或暗示的担保。因使用本模组而产生的
+   任何索赔、损害或其他责任，作者概不负责。
