@@ -18,8 +18,6 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.minecart.yunxian.client.mechanical.SmartDrillActorVisual;
 import com.simibubi.create.content.contraptions.render.ActorVisual;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
@@ -27,9 +25,6 @@ import dev.engine_room.flywheel.api.visualization.VisualizationContext;
 import org.jetbrains.annotations.Nullable;
 
 public class SmartDrillMovementBehaviour extends DrillMovementBehaviour {
-
-    private static final Logger LOGGER =
-            LoggerFactory.getLogger("create_crystal_industry.smart_drill_movement");
 
     /** canBreak 没有 context 参数，用字段在调用期间中转（服务端单线程） */
     private MovementContext activeContext;
@@ -40,10 +35,6 @@ public class SmartDrillMovementBehaviour extends DrillMovementBehaviour {
     /** c:budding_blocks 物品标签（data/c/tags/item/...，当前实际生效的那份） */
     private static final TagKey<Item> BUDDING_BLOCKS_ITEM_TAG =
             TagKey.create(Registries.ITEM, ResourceLocation.parse("c:budding_blocks"));
-
-    public SmartDrillMovementBehaviour() {
-        LOGGER.error("[SmartDrillMovement] registered");   // ← 环节1的探针
-    }
 
     @Override
     public void visitNewPosition(MovementContext context, BlockPos pos) {
@@ -76,14 +67,9 @@ public class SmartDrillMovementBehaviour extends DrillMovementBehaviour {
                 ? null
                 : activeContext.getFilterFromBE();
 
-        boolean allowed = true;
-        if (filter != null && !filter.item().isEmpty())
-            allowed = filter.test(world, BlockHelper.getRequiredItem(state));
-
-        // ← 环节2+3的探针：filterItem= 显示实际拿到的过滤物品
-        LOGGER.error("[SmartDrillMovement] canBreak at {}: filterItem={}, allowed={}",
-                breakingPos, filter == null ? "null" : filter.item(), allowed);
-        return allowed;
+        return filter == null
+                || filter.item().isEmpty()
+                || filter.test(world, BlockHelper.getRequiredItem(state));
     }
 
     /**
