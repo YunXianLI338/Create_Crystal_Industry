@@ -2,6 +2,7 @@ package com.minecart.yunxian;
 
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.behaviour.SmartDrillMovementBehaviour;
+import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.client.ModRenderers;
 import com.minecart.yunxian.registry.*;
 import com.minecart.yunxian.util.NightVisionWearHelper;
@@ -24,6 +25,9 @@ public class Yunxian {
 
         ModBlocks.register(modEventBus);
         ModItems.register(modEventBus);
+        // 母岩家族由中央定义表注册：必须在这里触发一次类初始化，
+        // 否则方块会晚于注册表事件才入表，启动后整批母岩缺失
+        BuddingFamilies.bootstrap();
         EchoAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModMenus.register(modEventBus);
         ModBlockEntities.register(modEventBus);

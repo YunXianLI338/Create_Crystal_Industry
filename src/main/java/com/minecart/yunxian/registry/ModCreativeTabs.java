@@ -1,6 +1,8 @@
 package com.minecart.yunxian.registry;
 
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.budding.BuddingFamilies;
+import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -17,87 +19,14 @@ public final class ModCreativeTabs {
     public static final Supplier<CreativeModeTab> YUNXIAN_TAB = CREATIVE_TABS.register("create_crystal_industry_tab",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.create_crystal_industry"))
-                    .icon(() -> new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get()))
+                    .icon(() -> new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get()))
                     .displayItems((parameters, output) -> {
-                        output.accept(ModBlocks.ROSE_QUARTZ_BUDDING.get());
-                        output.accept(ModBlocks.ROSE_QUARTZ_SMALL_BUD.get());
-                        output.accept(ModBlocks.ROSE_QUARTZ_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.ROSE_QUARTZ_LARGE_BUD.get());
-                        output.accept(ModBlocks.ROSE_QUARTZ_CLUSTER.get());
-
-                        output.accept(ModBlocks.RAW_IRON_BUDDING.get());
-                        output.accept(ModBlocks.RAW_IRON_SMALL_BUD.get());
-                        output.accept(ModBlocks.RAW_IRON_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.RAW_IRON_LARGE_BUD.get());
-                        output.accept(ModBlocks.RAW_IRON_CLUSTER.get());
-
-                        output.accept(ModBlocks.RAW_GOLD_BUDDING.get());
-                        output.accept(ModBlocks.RAW_GOLD_SMALL_BUD.get());
-                        output.accept(ModBlocks.RAW_GOLD_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.RAW_GOLD_LARGE_BUD.get());
-                        output.accept(ModBlocks.RAW_GOLD_CLUSTER.get());
-
-                        output.accept(ModBlocks.RAW_COPPER_BUDDING.get());
-                        output.accept(ModBlocks.RAW_COPPER_SMALL_BUD.get());
-                        output.accept(ModBlocks.RAW_COPPER_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.RAW_COPPER_LARGE_BUD.get());
-                        output.accept(ModBlocks.RAW_COPPER_CLUSTER.get());
-
-                        output.accept(ModBlocks.RAW_ZINC_BUDDING.get());
-                        output.accept(ModBlocks.RAW_ZINC_SMALL_BUD.get());
-                        output.accept(ModBlocks.RAW_ZINC_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.RAW_ZINC_LARGE_BUD.get());
-                        output.accept(ModBlocks.RAW_ZINC_CLUSTER.get());
-
-                        output.accept(ModBlocks.DIAMOND_BUDDING.get());
-                        output.accept(ModBlocks.DIAMOND_SMALL_BUD.get());
-                        output.accept(ModBlocks.DIAMOND_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.DIAMOND_LARGE_BUD.get());
-                        output.accept(ModBlocks.DIAMOND_CLUSTER.get());
-
-                        output.accept(ModBlocks.LAPIS_BUDDING.get());
-                        output.accept(ModBlocks.LAPIS_SMALL_BUD.get());
-                        output.accept(ModBlocks.LAPIS_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.LAPIS_LARGE_BUD.get());
-                        output.accept(ModBlocks.LAPIS_CLUSTER.get());
-
-                        output.accept(ModBlocks.EMERALD_BUDDING.get());
-                        output.accept(ModBlocks.EMERALD_SMALL_BUD.get());
-                        output.accept(ModBlocks.EMERALD_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.EMERALD_LARGE_BUD.get());
-                        output.accept(ModBlocks.EMERALD_CLUSTER.get());
-
-                        output.accept(ModBlocks.ECHO_BUDDING.get());
-                        output.accept(ModBlocks.ECHO_SMALL_BUD.get());
-                        output.accept(ModBlocks.ECHO_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.ECHO_LARGE_BUD.get());
-                        output.accept(ModBlocks.ECHO_CLUSTER.get());
-
-                        output.accept(ModBlocks.QUARTZ_BUDDING.get());
-                        output.accept(ModBlocks.QUARTZ_SMALL_BUD.get());
-                        output.accept(ModBlocks.QUARTZ_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.QUARTZ_LARGE_BUD.get());
-                        output.accept(ModBlocks.QUARTZ_CLUSTER.get());
-
-                        output.accept(ModBlocks.REDSTONE_BUDDING.get());
-                        output.accept(ModBlocks.REDSTONE_SMALL_BUD.get());
-                        output.accept(ModBlocks.REDSTONE_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.REDSTONE_LARGE_BUD.get());
-                        output.accept(ModBlocks.REDSTONE_CLUSTER.get());
-
-                        output.accept(ModBlocks.GLOWSTONE_BUDDING.get());
-                        output.accept(ModBlocks.GLOWSTONE_SMALL_BUD.get());
-                        output.accept(ModBlocks.GLOWSTONE_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.GLOWSTONE_LARGE_BUD.get());
-                        output.accept(ModBlocks.GLOWSTONE_CLUSTER.get());
-
-                        output.accept(ModBlocks.FLAMMABLE_ICE_BUDDING.get());
-                        output.accept(ModBlocks.FLAMMABLE_ICE_SMALL_BUD.get());
-                        output.accept(ModBlocks.FLAMMABLE_ICE_MEDIUM_BUD.get());
-                        output.accept(ModBlocks.FLAMMABLE_ICE_LARGE_BUD.get());
-                        output.accept(ModBlocks.FLAMMABLE_ICE_CLUSTER.get());
-                        output.accept(ModBlocks.FLAMMABLE_ICE_BLOCK.get());
-                        output.accept(ModItems.FLAMMABLE_ICE.get());
+                        // 母岩家族：顺序与物品栏一致，AE2 联动的家族排在工具之后
+                        for (RegisteredFamily family : BuddingFamilies.ALL) {
+                            if (family.isRegistered() && !family.spec().ae2Gated()) {
+                                acceptFamily(output, family);
+                            }
+                        }
 
                         output.accept(ModBlocks.ACCELERATOR.get());
                         output.accept(ModBlocks.MECHANICAL_ACCELERATOR.get());
@@ -106,15 +35,23 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.ECHO_SPYGLASS.get());
                         output.accept(ModItems.NIGHT_VISION_GOGGLES.get());
 
-                        if (ModBlocks.AE2_LOADED && ModBlocks.FLUIX_BUDDING != null) {
-                            output.accept(ModBlocks.FLUIX_BUDDING.get());
-                            output.accept(ModBlocks.FLUIX_SMALL_BUD.get());
-                            output.accept(ModBlocks.FLUIX_MEDIUM_BUD.get());
-                            output.accept(ModBlocks.FLUIX_LARGE_BUD.get());
-                            output.accept(ModBlocks.FLUIX_CLUSTER.get());
+                        for (RegisteredFamily family : BuddingFamilies.ALL) {
+                            if (family.isRegistered() && family.spec().ae2Gated()) {
+                                acceptFamily(output, family);
+                            }
                         }
                     })
                     .build());
+
+    /** 一个家族固定 5 个方块（母岩 + 三档芽 + 晶簇），外加家族自定义的追加物品 */
+    private static void acceptFamily(CreativeModeTab.Output output, RegisteredFamily family) {
+        for (var block : family.blocks()) {
+            output.accept(block.get());
+        }
+        for (var extra : family.spec().appearance().tabExtras()) {
+            output.accept(extra.get());
+        }
+    }
 
     private ModCreativeTabs() {
     }

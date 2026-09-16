@@ -3,7 +3,7 @@ package com.minecart.yunxian.ponder.scenes;
 import com.minecart.yunxian.block.AcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 
-import com.minecart.yunxian.registry.ModBlocks;
+import com.minecart.yunxian.budding.BuddingFamilies;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.createmod.ponder.api.scene.SceneBuilder;
 import net.createmod.ponder.api.scene.SceneBuildingUtil;
@@ -160,20 +160,20 @@ public class CrystalScenes {
 
         // 通电后，三块母岩上的小芽与小麦同时进阶（小芽→中芽）
         scene.world().setBlock(wheat, wheatState(2), false);
-        scene.world().setBlock(ironBud, budState(ModBlocks.RAW_IRON_MEDIUM_BUD.get(), Direction.UP), false);
-        scene.world().setBlock(roseSpot, budState(ModBlocks.ROSE_QUARTZ_MEDIUM_BUD.get(), Direction.UP), false);
+        scene.world().setBlock(ironBud, budState(BuddingFamilies.RAW_IRON.mediumBud().get(), Direction.UP), false);
+        scene.world().setBlock(roseSpot, budState(BuddingFamilies.ROSE_QUARTZ.mediumBud().get(), Direction.UP), false);
         scene.world().setBlock(amethystSpot, budState(Blocks.MEDIUM_AMETHYST_BUD, Direction.UP), false);
         scene.idle(5);
 
         scene.world().setBlock(wheat, wheatState(5), false);
-        scene.world().setBlock(ironBud, budState(ModBlocks.RAW_IRON_LARGE_BUD.get(), Direction.UP), false);
-        scene.world().setBlock(roseSpot, budState(ModBlocks.ROSE_QUARTZ_LARGE_BUD.get(), Direction.UP), false);
+        scene.world().setBlock(ironBud, budState(BuddingFamilies.RAW_IRON.largeBud().get(), Direction.UP), false);
+        scene.world().setBlock(roseSpot, budState(BuddingFamilies.ROSE_QUARTZ.largeBud().get(), Direction.UP), false);
         scene.world().setBlock(amethystSpot, budState(Blocks.LARGE_AMETHYST_BUD, Direction.UP), false);
         scene.idle(5);
 
         scene.world().setBlock(wheat, wheatState(7), false);
-        scene.world().setBlock(ironBud, budState(ModBlocks.RAW_IRON_CLUSTER.get(), Direction.UP), false);
-        scene.world().setBlock(roseSpot, budState(ModBlocks.ROSE_QUARTZ_CLUSTER.get(), Direction.UP), false);
+        scene.world().setBlock(ironBud, budState(BuddingFamilies.RAW_IRON.cluster().get(), Direction.UP), false);
+        scene.world().setBlock(roseSpot, budState(BuddingFamilies.ROSE_QUARTZ.cluster().get(), Direction.UP), false);
         scene.world().setBlock(amethystSpot, budState(Blocks.AMETHYST_CLUSTER, Direction.UP), false);
         scene.idle(50);
 
@@ -272,7 +272,7 @@ public class CrystalScenes {
 
         // 低转速演示：两块母岩各自只长出第一颗小芽（均在顶面）
         scene.world().setBlock(amethystSpot, budState(Blocks.SMALL_AMETHYST_BUD, Direction.UP), false);
-        scene.world().setBlock(goldSpot, budState(ModBlocks.RAW_GOLD_SMALL_BUD.get(), Direction.UP), false);
+        scene.world().setBlock(goldSpot, budState(BuddingFamilies.RAW_GOLD.smallBud().get(), Direction.UP), false);
         scene.idle(40);
 
         scene.overlay().showText(95)
@@ -292,15 +292,15 @@ public class CrystalScenes {
 
         // 快速完成：紫水晶/粗金 → 中/大/簇；小麦 → age 2/5/7
         scene.world().setBlock(amethystSpot, budState(Blocks.MEDIUM_AMETHYST_BUD, Direction.UP), false);
-        scene.world().setBlock(goldSpot, budState(ModBlocks.RAW_GOLD_MEDIUM_BUD.get(), Direction.UP), false);
+        scene.world().setBlock(goldSpot, budState(BuddingFamilies.RAW_GOLD.mediumBud().get(), Direction.UP), false);
         scene.world().setBlock(wheat, wheatState(2), false);
         scene.idle(4);
         scene.world().setBlock(amethystSpot, budState(Blocks.LARGE_AMETHYST_BUD, Direction.UP), false);
-        scene.world().setBlock(goldSpot, budState(ModBlocks.RAW_GOLD_LARGE_BUD.get(), Direction.UP), false);
+        scene.world().setBlock(goldSpot, budState(BuddingFamilies.RAW_GOLD.largeBud().get(), Direction.UP), false);
         scene.world().setBlock(wheat, wheatState(5), false);
         scene.idle(4);
         scene.world().setBlock(amethystSpot, budState(Blocks.AMETHYST_CLUSTER, Direction.UP), false);
-        scene.world().setBlock(goldSpot, budState(ModBlocks.RAW_GOLD_CLUSTER.get(), Direction.UP), false);
+        scene.world().setBlock(goldSpot, budState(BuddingFamilies.RAW_GOLD.cluster().get(), Direction.UP), false);
         scene.world().setBlock(wheat, wheatState(7), false);
         scene.effects().indicateSuccess(amethystSpot);
         scene.effects().indicateSuccess(goldSpot);

@@ -5,9 +5,6 @@ import com.minecart.yunxian.block.AcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalCleanerBlock;
 import com.minecart.yunxian.block.SmartDrillBlock;
-import com.minecart.yunxian.block.budding.*;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -21,159 +18,19 @@ import net.neoforged.fml.ModList;
 
 import java.util.function.Supplier;
 
+/**
+ * 非母岩方块的注册表：机器、工具与可燃冰装饰方块。
+ * <p>
+ * 全部母岩（含各级芽与晶簇）由 {@code budding/BuddingFamilies} 的中央定义表注册，
+ * 本类只提供注册表本身与 {@link #registerBlock} 工具方法。
+ * <p>
+ * <b>本类不得引用 BuddingFamilies</b>：BuddingFamilies 依赖本类，反向引用会让静态
+ * 初始化成环（BuddingFamilies → ModBlocks → BuddingFamilies），启动即崩。
+ */
 public final class ModBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(Yunxian.MODID);
 
-    // Rose quartz
-    public static final DeferredBlock<Block> ROSE_QUARTZ_SMALL_BUD = bud("rose_quartz_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> ROSE_QUARTZ_MEDIUM_BUD = bud("rose_quartz_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> ROSE_QUARTZ_LARGE_BUD = bud("rose_quartz_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> ROSE_QUARTZ_CLUSTER = cluster("rose_quartz_cluster");
-    public static final DeferredBlock<Block> ROSE_QUARTZ_BUDDING = registerBlock("rose_quartz_budding",
-            () -> new GenericBuddingBlock(5, BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                    ROSE_QUARTZ_SMALL_BUD.get(), ROSE_QUARTZ_MEDIUM_BUD.get(),
-                    ROSE_QUARTZ_LARGE_BUD.get(), ROSE_QUARTZ_CLUSTER.get()));
-
-    // Raw iron
-    public static final DeferredBlock<Block> RAW_IRON_SMALL_BUD = bud("raw_iron_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> RAW_IRON_MEDIUM_BUD = bud("raw_iron_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> RAW_IRON_LARGE_BUD = bud("raw_iron_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> RAW_IRON_CLUSTER = cluster("raw_iron_cluster");
-    public static final DeferredBlock<Block> RAW_IRON_BUDDING = oreBudding(
-            "raw_iron_budding", RAW_IRON_SMALL_BUD, RAW_IRON_MEDIUM_BUD, RAW_IRON_LARGE_BUD,
-            RAW_IRON_CLUSTER,
-            () -> Blocks.IRON_ORE, () -> Blocks.DEEPSLATE_IRON_ORE, () -> Blocks.RAW_IRON_BLOCK);
-
-    // Raw gold
-    public static final DeferredBlock<Block> RAW_GOLD_SMALL_BUD = bud("raw_gold_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> RAW_GOLD_MEDIUM_BUD = bud("raw_gold_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> RAW_GOLD_LARGE_BUD = bud("raw_gold_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> RAW_GOLD_CLUSTER = cluster("raw_gold_cluster");
-    public static final DeferredBlock<Block> RAW_GOLD_BUDDING = oreBudding(
-            "raw_gold_budding", RAW_GOLD_SMALL_BUD, RAW_GOLD_MEDIUM_BUD, RAW_GOLD_LARGE_BUD,
-            RAW_GOLD_CLUSTER,
-            () -> Blocks.GOLD_ORE, () -> Blocks.DEEPSLATE_GOLD_ORE, () -> Blocks.RAW_GOLD_BLOCK);
-
-    // Raw copper
-    public static final DeferredBlock<Block> RAW_COPPER_SMALL_BUD = bud("raw_copper_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> RAW_COPPER_MEDIUM_BUD = bud("raw_copper_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> RAW_COPPER_LARGE_BUD = bud("raw_copper_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> RAW_COPPER_CLUSTER = cluster("raw_copper_cluster");
-    public static final DeferredBlock<Block> RAW_COPPER_BUDDING = oreBudding(
-            "raw_copper_budding", RAW_COPPER_SMALL_BUD, RAW_COPPER_MEDIUM_BUD, RAW_COPPER_LARGE_BUD,
-            RAW_COPPER_CLUSTER,
-            () -> Blocks.COPPER_ORE, () -> Blocks.DEEPSLATE_COPPER_ORE, () -> Blocks.RAW_COPPER_BLOCK);
-
-    // Raw zinc (Create)
-    public static final DeferredBlock<Block> RAW_ZINC_SMALL_BUD = bud("raw_zinc_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> RAW_ZINC_MEDIUM_BUD = bud("raw_zinc_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> RAW_ZINC_LARGE_BUD = bud("raw_zinc_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> RAW_ZINC_CLUSTER = cluster("raw_zinc_cluster");
-    public static final DeferredBlock<Block> RAW_ZINC_BUDDING = oreBudding(
-            "raw_zinc_budding", RAW_ZINC_SMALL_BUD, RAW_ZINC_MEDIUM_BUD, RAW_ZINC_LARGE_BUD,
-            RAW_ZINC_CLUSTER,
-            () -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse("create:zinc_ore")),
-            () -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse("create:deepslate_zinc_ore")),
-            () -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse("create:raw_zinc_block")));
-
-    // Diamond
-    public static final DeferredBlock<Block> DIAMOND_SMALL_BUD = bud("diamond_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> DIAMOND_MEDIUM_BUD = bud("diamond_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> DIAMOND_LARGE_BUD = bud("diamond_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> DIAMOND_CLUSTER = cluster("diamond_cluster");
-    public static final DeferredBlock<Block> DIAMOND_BUDDING = oreBudding(
-            "diamond_budding", DIAMOND_SMALL_BUD, DIAMOND_MEDIUM_BUD, DIAMOND_LARGE_BUD,
-            DIAMOND_CLUSTER,
-            () -> Blocks.DIAMOND_ORE, () -> Blocks.DEEPSLATE_DIAMOND_ORE, () -> Blocks.DIAMOND_BLOCK);
-
-    // Emerald
-    public static final DeferredBlock<Block> EMERALD_SMALL_BUD = bud("emerald_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> EMERALD_MEDIUM_BUD = bud("emerald_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> EMERALD_LARGE_BUD = bud("emerald_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> EMERALD_CLUSTER = cluster("emerald_cluster");
-    public static final DeferredBlock<Block> EMERALD_BUDDING = oreBudding(
-            "emerald_budding", EMERALD_SMALL_BUD, EMERALD_MEDIUM_BUD, EMERALD_LARGE_BUD,
-            EMERALD_CLUSTER,
-            () -> Blocks.EMERALD_ORE, () -> Blocks.DEEPSLATE_EMERALD_ORE, () -> Blocks.EMERALD_BLOCK);
-
-    // Lapis Lazuli（镜像 Diamond / Emerald）
-    public static final DeferredBlock<Block> LAPIS_SMALL_BUD = bud("lapis_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> LAPIS_MEDIUM_BUD = bud("lapis_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> LAPIS_LARGE_BUD = bud("lapis_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> LAPIS_CLUSTER = cluster("lapis_cluster");
-    public static final DeferredBlock<Block> LAPIS_BUDDING = oreBudding(
-            "lapis_budding", LAPIS_SMALL_BUD, LAPIS_MEDIUM_BUD, LAPIS_LARGE_BUD,
-            LAPIS_CLUSTER,
-            () -> Blocks.LAPIS_ORE, () -> Blocks.DEEPSLATE_LAPIS_ORE, () -> Blocks.LAPIS_BLOCK);
-
-    // Echo（无发光：发光会阻碍要求光照=0 的回响生长）
-    public static final DeferredBlock<Block> ECHO_SMALL_BUD = darkBud("echo_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> ECHO_MEDIUM_BUD = darkBud("echo_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> ECHO_LARGE_BUD = darkBud("echo_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> ECHO_CLUSTER = darkCluster("echo_cluster");
-    public static final DeferredBlock<Block> ECHO_BUDDING = registerBlock("echo_budding",
-            () -> new EchoConvertingBuddingBlock(5, BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                    ECHO_SMALL_BUD.get(), ECHO_MEDIUM_BUD.get(), ECHO_LARGE_BUD.get(), ECHO_CLUSTER.get()));
-
-    // Quartz
-    public static final DeferredBlock<Block> QUARTZ_SMALL_BUD = bud("quartz_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> QUARTZ_MEDIUM_BUD = bud("quartz_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> QUARTZ_LARGE_BUD = bud("quartz_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> QUARTZ_CLUSTER = cluster("quartz_cluster");
-    public static final DeferredBlock<Block> QUARTZ_BUDDING = registerBlock("quartz_budding",
-            () -> new QuartzConvertingBuddingBlock(5, BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                    QUARTZ_SMALL_BUD.get(), QUARTZ_MEDIUM_BUD.get(), QUARTZ_LARGE_BUD.get(), QUARTZ_CLUSTER.get()));
-
-    // Glowstone
-    public static final DeferredBlock<Block> GLOWSTONE_SMALL_BUD = bud("glowstone_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud", 3);
-    public static final DeferredBlock<Block> GLOWSTONE_MEDIUM_BUD = bud("glowstone_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud", 7);
-    public static final DeferredBlock<Block> GLOWSTONE_LARGE_BUD = bud("glowstone_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud", 11);
-    public static final DeferredBlock<Block> GLOWSTONE_CLUSTER = cluster("glowstone_cluster", 15);
-    public static final DeferredBlock<Block> GLOWSTONE_BUDDING = registerBlock("glowstone_budding",
-            () -> new GenericBuddingBlock(5,
-                    BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST).lightLevel(state -> 15),
-                    GLOWSTONE_SMALL_BUD.get(), GLOWSTONE_MEDIUM_BUD.get(),
-                    GLOWSTONE_LARGE_BUD.get(), GLOWSTONE_CLUSTER.get()));
-
-    // Redstone
-    public static final DeferredBlock<Block> REDSTONE_SMALL_BUD = registerBlock("redstone_small_bud",
-            () -> new RedstoneClusterBlock(1, 1, BlockBehaviour.Properties.ofFullCopy(Blocks.SMALL_AMETHYST_BUD),
-                    "small_bud", 3));
-    public static final DeferredBlock<Block> REDSTONE_MEDIUM_BUD = registerBlock("redstone_medium_bud",
-            () -> new RedstoneClusterBlock(3, 2, BlockBehaviour.Properties.ofFullCopy(Blocks.MEDIUM_AMETHYST_BUD),
-                    "medium_bud", 7));
-    public static final DeferredBlock<Block> REDSTONE_LARGE_BUD = registerBlock("redstone_large_bud",
-            () -> new RedstoneClusterBlock(5, 3, BlockBehaviour.Properties.ofFullCopy(Blocks.LARGE_AMETHYST_BUD),
-                    "large_bud", 11));
-    public static final DeferredBlock<Block> REDSTONE_CLUSTER = registerBlock("redstone_cluster",
-            () -> new RedstoneClusterBlock(7, 3,
-                    BlockBehaviour.Properties.ofFullCopy(Blocks.AMETHYST_CLUSTER)
-                            .noOcclusion()
-                            .isRedstoneConductor((state, level, pos) -> false)
-                            .isSuffocating((state, level, pos) -> false)
-                            .isViewBlocking((state, level, pos) -> false),
-                    "cluster", 15));
-    public static final DeferredBlock<Block> REDSTONE_BUDDING = registerBlock("redstone_budding",
-            () -> new RedstoneBuddingBlock(5, BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                    REDSTONE_SMALL_BUD.get(), REDSTONE_MEDIUM_BUD.get(), REDSTONE_LARGE_BUD.get(),
-                    REDSTONE_CLUSTER.get(),
-                    () -> Blocks.REDSTONE_ORE, () -> Blocks.DEEPSLATE_REDSTONE_ORE,
-                    () -> Blocks.REDSTONE_BLOCK));
-
-    // Flammable ice（全部使用冰/玻璃音效；母岩与装饰方块带蓝冰摩擦）
-    public static final DeferredBlock<Block> FLAMMABLE_ICE_SMALL_BUD = iceBud("flammable_ice_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-    public static final DeferredBlock<Block> FLAMMABLE_ICE_MEDIUM_BUD = iceBud("flammable_ice_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-    public static final DeferredBlock<Block> FLAMMABLE_ICE_LARGE_BUD = iceBud("flammable_ice_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-    public static final DeferredBlock<Block> FLAMMABLE_ICE_CLUSTER = iceCluster("flammable_ice_cluster");
-    // 母岩（冰音效 + 蓝冰摩擦 + 水中生长逻辑）
-    public static final DeferredBlock<Block> FLAMMABLE_ICE_BUDDING = registerBlock("flammable_ice_budding",
-            () -> new FlammableIceBuddingBlock(5,
-                    BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST)
-                            .sound(SoundType.GLASS)
-                            .friction(0.989F),
-                    FLAMMABLE_ICE_SMALL_BUD.get(), FLAMMABLE_ICE_MEDIUM_BUD.get(),
-                    FLAMMABLE_ICE_LARGE_BUD.get(), FLAMMABLE_ICE_CLUSTER.get()));
-    // 装饰方块（冰音效 + 蓝冰摩擦）
+    // 可燃冰装饰方块（冰音效 + 蓝冰摩擦）
     public static final DeferredBlock<Block> FLAMMABLE_ICE_BLOCK = registerBlock("flammable_ice_block",
             () -> new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.BLUE_ICE)
                     .sound(SoundType.GLASS)
@@ -199,146 +56,18 @@ public final class ModBlocks {
     public static final DeferredBlock<Block> MECHANICAL_CLEANER = registerBlock("mechanical_cleaner",
             () -> new MechanicalCleanerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion()));
 
-    // ===== AE2 联动：福鲁伊克斯母岩（仅当 AE2 加载时注册）=====
+    /** AE2 是否加载：可选联动（福鲁伊克斯母岩）的开关 */
     public static final boolean AE2_LOADED =
             ModList.get() != null && ModList.get().isLoaded("ae2");
-
-    public static final DeferredBlock<Block> FLUIX_SMALL_BUD;
-    public static final DeferredBlock<Block> FLUIX_MEDIUM_BUD;
-    public static final DeferredBlock<Block> FLUIX_LARGE_BUD;
-    public static final DeferredBlock<Block> FLUIX_CLUSTER;
-    public static final DeferredBlock<FluixBuddingBlock> FLUIX_BUDDING;
-
-    static {
-        if (AE2_LOADED) {
-            FLUIX_SMALL_BUD = bud("fluix_small_bud", Blocks.SMALL_AMETHYST_BUD, 1, 1, "small_bud");
-            FLUIX_MEDIUM_BUD = bud("fluix_medium_bud", Blocks.MEDIUM_AMETHYST_BUD, 3, 2, "medium_bud");
-            FLUIX_LARGE_BUD = bud("fluix_large_bud", Blocks.LARGE_AMETHYST_BUD, 5, 3, "large_bud");
-            FLUIX_CLUSTER = cluster("fluix_cluster");
-            FLUIX_BUDDING = registerBlock("fluix_budding",
-                    () -> new FluixBuddingBlock(5,
-                            BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                            FLUIX_SMALL_BUD.get(), FLUIX_MEDIUM_BUD.get(), FLUIX_LARGE_BUD.get(),
-                            FLUIX_CLUSTER.get(),
-                            () -> BuiltInRegistries.BLOCK.get(ResourceLocation.parse("ae2:fluix_block"))));
-        } else {
-            FLUIX_SMALL_BUD = null;
-            FLUIX_MEDIUM_BUD = null;
-            FLUIX_LARGE_BUD = null;
-            FLUIX_CLUSTER = null;
-            FLUIX_BUDDING = null;
-        }
-    }
 
     private ModBlocks() {
     }
 
-    private static DeferredBlock<Block> bud(String name, Block copyFrom, int stage, int height, String stageKey) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                stage, height, BlockBehaviour.Properties.ofFullCopy(copyFrom), stageKey));
-    }
-
-    private static DeferredBlock<Block> bud(String name, Block copyFrom, int stage, int height,
-                                            String stageKey, int lightLevel) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                stage, height, BlockBehaviour.Properties.ofFullCopy(copyFrom).lightLevel(state -> lightLevel),
-                stageKey));
-    }
-
-    private static DeferredBlock<Block> cluster(String name) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                7,
-                3,
-                BlockBehaviour.Properties.ofFullCopy(Blocks.AMETHYST_CLUSTER)
-                        .noOcclusion()
-                        .isRedstoneConductor((state, level, pos) -> false)
-                        .isSuffocating((state, level, pos) -> false)
-                        .isViewBlocking((state, level, pos) -> false),
-                "cluster"
-        ));
-    }
-
-    private static DeferredBlock<Block> cluster(String name, int lightLevel) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                7,
-                3,
-                BlockBehaviour.Properties.ofFullCopy(Blocks.AMETHYST_CLUSTER)
-                        .noOcclusion()
-                        .isRedstoneConductor((state, level, pos) -> false)
-                        .isSuffocating((state, level, pos) -> false)
-                        .isViewBlocking((state, level, pos) -> false)
-                        .lightLevel(state -> lightLevel),
-                "cluster"
-        ));
-    }
-    /** 无发光芽体：ofFullCopy 会继承原版紫水晶的 lightLevel，这里显式清零 */
-    private static DeferredBlock<Block> darkBud(String name, Block copyFrom, int stage, int height,
-                                                String stageKey) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                stage, height,
-                BlockBehaviour.Properties.ofFullCopy(copyFrom).lightLevel(state -> 0),
-                stageKey));
-    }
-
-    /** 无发光晶簇：回响生长要求目标格亮度为 0，晶簇自身不得发光 */
-    private static DeferredBlock<Block> darkCluster(String name) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                7,
-                3,
-                BlockBehaviour.Properties.ofFullCopy(Blocks.AMETHYST_CLUSTER)
-                        .lightLevel(state -> 0)
-                        .noOcclusion()
-                        .isRedstoneConductor((state, level, pos) -> false)
-                        .isSuffocating((state, level, pos) -> false)
-                        .isViewBlocking((state, level, pos) -> false),
-                "cluster"
-        ));
-    }
-
-    private static DeferredBlock<Block> oreBudding(String name,
-                                                   DeferredBlock<Block> small,
-                                                   DeferredBlock<Block> medium,
-                                                   DeferredBlock<Block> large,
-                                                   DeferredBlock<Block> cluster,
-                                                   Supplier<Block> stoneOre,
-                                                   Supplier<Block> deepslateOre,
-                                                   Supplier<Block> rawOreBlock) {
-        return registerBlock(name, () -> new OreConvertingBuddingBlock(
-                5,
-                BlockBehaviour.Properties.ofFullCopy(Blocks.BUDDING_AMETHYST),
-                small.get(), medium.get(), large.get(), cluster.get(),
-                stoneOre, deepslateOre, rawOreBlock
-        ));
-    }
-
-    private static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T> blockSupplier) {
+    /** 注册方块并顺带注册对应的 BlockItem */
+    public static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T> blockSupplier) {
         DeferredBlock<T> block = BLOCKS.register(name, blockSupplier);
         ModItems.ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
         return block;
-    }
-
-    /** 可燃冰晶芽：继承紫水晶芽属性但使用冰（玻璃）音效 */
-    private static DeferredBlock<Block> iceBud(String name, Block copyFrom, int stage, int height,
-                                               String stageKey) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                stage, height,
-                BlockBehaviour.Properties.ofFullCopy(copyFrom).sound(SoundType.GLASS),
-                stageKey));
-    }
-
-    /** 可燃冰晶簇：继承紫水晶簇属性但使用冰（玻璃）音效 */
-    private static DeferredBlock<Block> iceCluster(String name) {
-        return registerBlock(name, () -> new YunxianClusterBlock(
-                7,
-                3,
-                BlockBehaviour.Properties.ofFullCopy(Blocks.AMETHYST_CLUSTER)
-                        .sound(SoundType.GLASS)
-                        .noOcclusion()
-                        .isRedstoneConductor((state, level, pos) -> false)
-                        .isSuffocating((state, level, pos) -> false)
-                        .isViewBlocking((state, level, pos) -> false),
-                "cluster"
-        ));
     }
 
     public static void register(IEventBus modEventBus) {

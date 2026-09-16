@@ -1,6 +1,6 @@
 package com.minecart.yunxian.ponder.scenes;
 
-import com.minecart.yunxian.registry.ModBlocks;
+import com.minecart.yunxian.budding.BuddingFamilies;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
 import net.createmod.ponder.api.scene.SceneBuilder;
@@ -132,8 +132,8 @@ public class SmartDrillScenes {
         scene.idle(105);
 
         // 6) 母岩：普通钻头打碎后无法采集
-        scene.world().setBlock(spotSmart, ModBlocks.ROSE_QUARTZ_BUDDING.get().defaultBlockState(), false);
-        scene.world().setBlock(spotVanilla, ModBlocks.ROSE_QUARTZ_BUDDING.get().defaultBlockState(), false);
+        scene.world().setBlock(spotSmart, BuddingFamilies.ROSE_QUARTZ.budding().get().defaultBlockState(), false);
+        scene.world().setBlock(spotVanilla, BuddingFamilies.ROSE_QUARTZ.budding().get().defaultBlockState(), false);
         scene.idle(10);
 
         scene.overlay().showText(110)
@@ -142,7 +142,7 @@ public class SmartDrillScenes {
                 .placeNearTarget()
                 .pointAt(util.vector().centerOf(spotVanilla));
         scene.idle(20);
-        destroyWithDebris(scene, util, spotVanilla, ModBlocks.ROSE_QUARTZ_BUDDING.get().defaultBlockState());
+        destroyWithDebris(scene, util, spotVanilla, BuddingFamilies.ROSE_QUARTZ.budding().get().defaultBlockState());
         scene.idle(105);
 
         // 7) 母岩：精准采集完整采下（掉落物留在场景中）
@@ -152,9 +152,9 @@ public class SmartDrillScenes {
                 .placeNearTarget()
                 .pointAt(util.vector().centerOf(spotSmart));
         scene.idle(10);
-        destroyWithDebris(scene, util, spotSmart, ModBlocks.ROSE_QUARTZ_BUDDING.get().defaultBlockState());
+        destroyWithDebris(scene, util, spotSmart, BuddingFamilies.ROSE_QUARTZ.budding().get().defaultBlockState());
         scene.world().createItemEntity(util.vector().centerOf(spotSmart), Vec3.ZERO,
-                new ItemStack(ModBlocks.ROSE_QUARTZ_BUDDING.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.budding().get().asItem()));
         scene.effects().indicateSuccess(spotSmart);
         scene.idle(120);
     }

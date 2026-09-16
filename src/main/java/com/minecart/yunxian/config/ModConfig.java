@@ -1,5 +1,11 @@
 package com.minecart.yunxian.config;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.minecart.yunxian.budding.BuddingFamilies;
+import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
+
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class ModConfig {
@@ -32,20 +38,21 @@ public final class ModConfig {
                     .define(path, defaultValue);
         }
 
-        public static final ModConfigSpec.BooleanValue GENERATE_RAW_IRON = budding("raw_iron", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_RAW_GOLD = budding("raw_gold", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_RAW_COPPER = budding("raw_copper", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_RAW_ZINC = budding("raw_zinc", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_DIAMOND = budding("diamond", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_EMERALD = budding("emerald", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_LAPIS = budding("lapis", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_REDSTONE = budding("redstone", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_ECHO = budding("echo", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_GLOWSTONE = budding("glowstone", true);
-        public static final ModConfigSpec.BooleanValue GENERATE_QUARTZ = budding("quartz", true);
+        /**
+         * 各母岩家族的世界生成开关：由中央定义表派生（{@link BuddingFamilies#ALL} 里
+         * {@code generateInWorld} 为 true 的家族各产出一个 generate_&lt;id&gt; 配置项）。
+         */
+        private static final Map<String, ModConfigSpec.BooleanValue> GENERATE_BUDDING = buildBuddingFlags();
 
-        // ★ 新增：可燃冰母岩结构生成开关 ★
-        public static final ModConfigSpec.BooleanValue GENERATE_FLAMMABLE_ICE = budding("flammable_ice", true);
+        private static Map<String, ModConfigSpec.BooleanValue> buildBuddingFlags() {
+            Map<String, ModConfigSpec.BooleanValue> flags = new LinkedHashMap<>();
+            for (RegisteredFamily family : BuddingFamilies.ALL) {
+                if (family.spec().generateInWorld()) {
+                    flags.put(family.spec().id(), budding(family.spec().id(), true));
+                }
+            }
+            return Map.copyOf(flags);
+        }
 
         // ★ 新增：可燃冰母岩结构生成概率（1/N 每区块）★
         public static final ModConfigSpec.IntValue FLAMMABLE_ICE_CHANCE = BUILDER
@@ -114,23 +121,10 @@ public final class ModConfig {
                 .translation(LANG_PREFIX + "glowstoneBudsOnGlowstone")
                 .define("glowstoneBudsOnGlowstone", true);
 
+        /** 查询某个母岩家族的世界生成开关；未配置该项的家族（如玫瑰石英、福鲁伊克斯）恒为 true */
         public static boolean enabled(String key) {
-            return switch (key) {
-                case "raw_iron" -> GENERATE_RAW_IRON.get();
-                case "raw_gold" -> GENERATE_RAW_GOLD.get();
-                case "raw_copper" -> GENERATE_RAW_COPPER.get();
-                case "raw_zinc" -> GENERATE_RAW_ZINC.get();
-                case "diamond" -> GENERATE_DIAMOND.get();
-                case "emerald" -> GENERATE_EMERALD.get();
-                case "lapis" -> GENERATE_LAPIS.get();
-                case "redstone" -> GENERATE_REDSTONE.get();
-                case "echo" -> GENERATE_ECHO.get();
-                case "glowstone" -> GENERATE_GLOWSTONE.get();
-                case "quartz" -> GENERATE_QUARTZ.get();
-                // ★ 新增 ★
-                case "flammable_ice" -> GENERATE_FLAMMABLE_ICE.get();
-                default -> true;
-            };
+            ModConfigSpec.BooleanValue flag = GENERATE_BUDDING.get(key);
+            return flag == null || flag.get();
         }
 
         // ===== 回响望远镜 =====

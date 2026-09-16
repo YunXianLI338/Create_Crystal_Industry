@@ -1,7 +1,7 @@
 package com.minecart.yunxian.ponder.scenes;
 
 import com.minecart.yunxian.blockentity.MechanicalCleanerBlockEntity;
-import com.minecart.yunxian.registry.ModBlocks;
+import com.minecart.yunxian.budding.BuddingFamilies;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
 import net.createmod.ponder.api.element.ElementLink;
@@ -87,11 +87,11 @@ public class MechanicalCleanerScenes {
         // 两件物品一前一后画抛物线飞入机器前脸（轨迹为近似值，可调）
         ElementLink<EntityElement> suckA = scene.world().createItemEntity(
                 new Vec3(2.5, 1.2, 1.1), new Vec3(0, 0.22, 0.19),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(4);
         ElementLink<EntityElement> suckB = scene.world().createItemEntity(
                 new Vec3(2.5, 1.2, 1.1), new Vec3(0, 0.22, 0.19),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(8);
         scene.world().modifyEntity(suckA, Entity::discard);
         scene.effects().indicateSuccess(cleaner);
@@ -119,11 +119,11 @@ public class MechanicalCleanerScenes {
         scene.idle(20);
         ElementLink<EntityElement> pullA = scene.world().createItemEntity(
                 new Vec3(2.5, 1.5, 2.98), new Vec3(0, 0.02, 0.055),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(4);
         ElementLink<EntityElement> pullB = scene.world().createItemEntity(
                 new Vec3(2.5, 1.5, 2.98), new Vec3(0, 0.02, 0.055),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(6);
         scene.world().modifyEntity(pullA, Entity::discard);
         scene.idle(4);
@@ -139,11 +139,11 @@ public class MechanicalCleanerScenes {
         scene.idle(15);
         ElementLink<EntityElement> pushA = scene.world().createItemEntity(
                 new Vec3(2.5, 1.5, 3.15), new Vec3(0, 0.02, -0.055),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(5);
         ElementLink<EntityElement> pushB = scene.world().createItemEntity(
                 new Vec3(2.5, 1.5, 3.15), new Vec3(0, 0.02, -0.055),
-                new ItemStack(ModBlocks.ROSE_QUARTZ_CLUSTER.get().asItem()));
+                new ItemStack(BuddingFamilies.ROSE_QUARTZ.cluster().get().asItem()));
         scene.idle(8);
         scene.world().modifyEntity(pushA, Entity::discard);
         scene.idle(5);

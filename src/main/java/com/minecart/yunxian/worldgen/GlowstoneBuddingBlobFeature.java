@@ -1,7 +1,7 @@
 package com.minecart.yunxian.worldgen;
 
 import com.mojang.serialization.Codec;
-import com.minecart.yunxian.registry.ModBlocks;
+import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.config.ModConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -53,7 +53,7 @@ public class GlowstoneBuddingBlobFeature extends GlowstoneFeature {
 
             if (lowest != null) {
                 // 母岩本体。
-                context.level().setBlock(lowest, ModBlocks.GLOWSTONE_BUDDING.get().defaultBlockState(), 2);
+                context.level().setBlock(lowest, BuddingFamilies.GLOWSTONE.budding().get().defaultBlockState(), 2);
 
                 if (ModConfig.Common.GLOWSTONE_GENERATE_BUDS.get()) {
                     int buds = ModConfig.Common.GLOWSTONE_BUD_COUNT.get();
@@ -69,7 +69,7 @@ public class GlowstoneBuddingBlobFeature extends GlowstoneFeature {
                             for (int dz = -8; dz <= 8; dz++) {
                                 BlockPos support = lowest.offset(dx, dy, dz);
                                 BlockState supportState = context.level().getBlockState(support);
-                                boolean isBudding = supportState.is(ModBlocks.GLOWSTONE_BUDDING.get());
+                                boolean isBudding = supportState.is(BuddingFamilies.GLOWSTONE.budding().get());
                                 boolean isGlowstone = supportState.is(Blocks.GLOWSTONE);
                                 if (isBudding || (onNearbyGlowstone && isGlowstone)) {
                                     for (Direction dir : Direction.Plane.HORIZONTAL) {
@@ -107,10 +107,10 @@ public class GlowstoneBuddingBlobFeature extends GlowstoneFeature {
 
     private static BlockState randomBudState(RandomSource random) {
         return switch (random.nextInt(4)) {
-            case 0 -> ModBlocks.GLOWSTONE_SMALL_BUD.get().defaultBlockState();
-            case 1 -> ModBlocks.GLOWSTONE_MEDIUM_BUD.get().defaultBlockState();
-            case 2 -> ModBlocks.GLOWSTONE_LARGE_BUD.get().defaultBlockState();
-            default -> ModBlocks.GLOWSTONE_CLUSTER.get().defaultBlockState();
+            case 0 -> BuddingFamilies.GLOWSTONE.smallBud().get().defaultBlockState();
+            case 1 -> BuddingFamilies.GLOWSTONE.mediumBud().get().defaultBlockState();
+            case 2 -> BuddingFamilies.GLOWSTONE.largeBud().get().defaultBlockState();
+            default -> BuddingFamilies.GLOWSTONE.cluster().get().defaultBlockState();
         };
     }
 

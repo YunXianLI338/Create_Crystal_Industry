@@ -1,14 +1,11 @@
 package com.minecart.yunxian.block.budding;
 
+import com.minecart.yunxian.budding.BuddingFamily;
 import com.minecart.yunxian.blockentity.budding.EchoConvertingBuddingBlockEntity;
-import com.minecart.yunxian.Yunxian;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.TagKey;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
@@ -17,7 +14,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.AmethystClusterBlock;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -27,29 +23,26 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * 回响母岩。生长、光照门槛（要求目标格亮度为 0）与幽匿转化都来自
+ * {@link BuddingFamily}，本类只负责两件与「方块状态」绑定的事：
+ * <ul>
+ *   <li>{@code CAN_SUMMON} 状态：必须在构造器里注册，而 {@code createBlockStateDefinition}
+ *       由 {@code BlockBehaviour} 的构造器调用（早于子类字段赋值），因此无法从 family 读取，
+ *       只能留在子类里无条件添加；</li>
+ *   <li>玩家破坏 {@code can_summon=true} 的母岩时召唤监守者。</li>
+ * </ul>
+ */
 public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements EntityBlock {
-
-    private static final int CONVERSION_CHANCE = 4;
-    private static final int CONVERSION_RADIUS = 2;
-
-    /**
-     * 生长格允许生长的最高光照
-     */
-    private static final int GROWTH_LIGHT_THRESHOLD = 1;
 
     /**
      * 召唤监守者的检测半径（格）。与幽匿尖啸体一致：以母岩为中心 ±48 格内已有监守者则不重复召唤。
      */
     private static final double WARDEN_CHECK_RADIUS = 48.0;
 
-    private static final TagKey<Block> ECHO_CONVERTIBLE = TagKey.create(
-            Registries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "echo_convertible")
-    );
-
-    public EchoConvertingBuddingBlock(int growthChance, Properties properties,
+    public EchoConvertingBuddingBlock(BuddingFamily family, Properties properties,
                                       Block smallBud, Block mediumBud, Block largeBud, Block cluster) {
-        super(growthChance, properties, smallBud, mediumBud, largeBud, cluster);
+        super(family, properties, smallBud, mediumBud, largeBud, cluster);
         // 默认 false：玩家放置的母岩不会召唤监守者；自然生成的由世界生成置为 true
         this.registerDefaultState(this.stateDefinition.any().setValue(BlockStateProperties.CAN_SUMMON, false));
     }
@@ -67,25 +60,6 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
         super.createBlockStateDefinition(builder);
     }
 
-    @Override
-    public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        // 生长交给父类（父类先检查生长格光照 < 阈值 才长）
-        super.randomTick(state, level, pos, random);
-
-        // 幽匿转化保持不变
-        if (random.nextInt(CONVERSION_CHANCE) == 0) {
-            tryConvertNearby(level, pos, random);
-        }
-    }
-
-    /**
-     * 生长格光照亮度必须 < GROWTH_LIGHT_THRESHOLD 才允许长出/晋级晶簇。
-     */
-    @Override
-    protected boolean canGrowAtLight(ServerLevel level, BlockPos neighborPos) {
-        return level.getMaxLocalRawBrightness(neighborPos) < GROWTH_LIGHT_THRESHOLD;
-    }
-
     /** 护目镜显示用的生长状态 */
     public enum GrowthStatus {
         /** 存在一个"空位或可进阶芽"且该格亮度为 0 */
@@ -99,7 +73,7 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
     /**
      * 供护目镜信息（客户端安全）判断"母岩当前为何不可生长"。
      * 与父类 randomTick 的判定一致：逐面检查是否有"空位（长新芽）或朝向匹配的芽（进阶）"，
-     * 再看该目标格亮度是否 < 阈值。晶簇是终态、不可替换，因此全部长满后归入 NO_SPACE，
+     * 再看该目标格是否满足光照要求。晶簇是终态、不可替换，因此全部长满后归入 NO_SPACE，
      * 而非误报光照不足。
      */
     public GrowthStatus getGrowthStatus(Level level, BlockPos pos) {
@@ -110,7 +84,7 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
             BlockState neighborState = level.getBlockState(neighborPos);
 
             // 该面是否为有效生长位
-            boolean newBudSpot = neighborState.isAir() || neighborState.canBeReplaced();
+            boolean newBudSpot = BuddingFamily.isFree(neighborState);
             boolean advancingBud = (neighborState.is(smallBud) || neighborState.is(mediumBud)
                     || neighborState.is(largeBud))
                     && neighborState.getValue(AmethystClusterBlock.FACING) == side;
@@ -119,8 +93,8 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
 
             hasAnyValidSpot = true;
 
-            // 光照要求：目标格亮度 < GROWTH_LIGHT_THRESHOLD（即 0）→ 当前即可生长
-            if (level.getMaxLocalRawBrightness(neighborPos) < GROWTH_LIGHT_THRESHOLD)
+            // 光照要求：该格亮度低于阈值（即 0）→ 当前即可生长
+            if (family.growth().light().allows(level, neighborPos))
                 return GrowthStatus.GROWABLE;
         }
 
@@ -178,22 +152,5 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
             }
         }
         return pos.immutable(); // 兜底：直接生成在母岩位置
-    }
-
-    private void tryConvertNearby(ServerLevel level, BlockPos centerPos, RandomSource random) {
-        int r = CONVERSION_RADIUS;
-        BlockPos targetPos = centerPos.offset(
-                random.nextInt(2 * r + 1) - r,
-                random.nextInt(2 * r + 1) - r,
-                random.nextInt(2 * r + 1) - r
-        );
-        if (targetPos.equals(centerPos)) {
-            return;
-        }
-
-        BlockState targetState = level.getBlockState(targetPos);
-        if (targetState.is(ECHO_CONVERTIBLE)) {
-            level.setBlockAndUpdate(targetPos, Blocks.SCULK.defaultBlockState());
-        }
     }
 }

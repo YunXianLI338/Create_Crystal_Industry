@@ -1,7 +1,10 @@
 package com.minecart.yunxian.ponder;
 
+import com.minecart.yunxian.budding.BuddingFamilies;
+import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.registry.ModBlocks;
 
+import net.createmod.ponder.api.registration.MultiTagBuilder;
 import net.createmod.ponder.api.registration.PonderTagRegistrationHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -43,22 +46,14 @@ public class AllYunxianPonderTags {
 
         PonderTagRegistrationHelper<Block> blocks = helper.withKeyFunction(BuiltInRegistries.BLOCK::getKey);
 
-        blocks.addToTag(BUDDING)
-                .add(Blocks.BUDDING_AMETHYST)
-                .add(ModBlocks.ROSE_QUARTZ_BUDDING.get())
-                .add(ModBlocks.RAW_IRON_BUDDING.get())
-                .add(ModBlocks.RAW_GOLD_BUDDING.get())
-                .add(ModBlocks.RAW_COPPER_BUDDING.get())
-                .add(ModBlocks.RAW_ZINC_BUDDING.get())
-                .add(ModBlocks.DIAMOND_BUDDING.get())
-                .add(ModBlocks.EMERALD_BUDDING.get())
-                .add(ModBlocks.LAPIS_BUDDING.get())
-                .add(ModBlocks.ECHO_BUDDING.get())
-                .add(ModBlocks.QUARTZ_BUDDING.get())
-                .add(ModBlocks.REDSTONE_BUDDING.get())
-                .add(ModBlocks.GLOWSTONE_BUDDING.get())
-                .add(ModBlocks.FLAMMABLE_ICE_BUDDING.get())
-                .add(ModBlocks.ACCELERATOR.get())
+        // 母岩名单由中央定义表派生（AE2 缺席时福鲁伊克斯那条不会注册，自然跳过）
+        MultiTagBuilder.Tag<Block> buddingTag = blocks.addToTag(BUDDING).add(Blocks.BUDDING_AMETHYST);
+        for (RegisteredFamily family : BuddingFamilies.ALL) {
+            if (family.isRegistered()) {
+                buddingTag.add(family.budding().get());
+            }
+        }
+        buddingTag.add(ModBlocks.ACCELERATOR.get())
                 .add(ModBlocks.MECHANICAL_ACCELERATOR.get());
 
         blocks.addToTag(ACCELERATORS)
@@ -68,10 +63,6 @@ public class AllYunxianPonderTags {
         blocks.addToTag(MACHINES)
                 .add(ModBlocks.SMART_DRILL.get())
                 .add(ModBlocks.MECHANICAL_CLEANER.get());
-
-        if (ModBlocks.FLUIX_BUDDING != null)
-            blocks.addToTag(BUDDING)
-                    .add(ModBlocks.FLUIX_BUDDING.get());
     }
 
 }
