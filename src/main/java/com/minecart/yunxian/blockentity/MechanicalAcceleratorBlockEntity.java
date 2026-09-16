@@ -3,6 +3,7 @@ package com.minecart.yunxian.blockentity;
 import java.util.List;
 
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
+import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModBlockEntities;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -19,11 +20,15 @@ public class MechanicalAcceleratorBlockEntity extends KineticBlockEntity {
     /** 满速基准：达到该转速时催生效果达到上限 */
     public static final float FULL_SPEED = 256f;
 
-    /** 电力催生器参考强度：每 tick 对 6 个面各触发一次 randomTick */
+    /** 电力催生器参考强度：每次催生对 6 个面各触发一次 randomTick */
     public static final float ELECTRIC_RATE = 6f;
 
-    /** 本机效果上限 = 电力催生器的 1/10（单位：randomTick / tick） */
-    public static final float MAX_EFFECT_RATE = ELECTRIC_RATE / 1f; // = 0.6
+    /**
+     * 本机满速时的效果上限（单位：randomTick / tick，6 个面合计）= 与电力催生器同级。
+     * 注意：历史注释曾写作「电力催生器的 1/10」，与代码不符（曾用 {@code ELECTRIC_RATE / 10f}），
+     * 平衡性以代码为准；实际倍率还会再除以配置里的催生间隔。
+     */
+    public static final float MAX_EFFECT_RATE = ELECTRIC_RATE;
 
     /** 工作面数量：全部 6 个面 */
     public static final int WORKING_FACES = 6;   // private → public
@@ -50,10 +55,10 @@ public class MechanicalAcceleratorBlockEntity extends KineticBlockEntity {
         if (!powered || !(level instanceof ServerLevel serverLevel))
             return;
 
-        // 满速时每面的触发概率（上限 1/10 电力催生器 ÷ 6 个工作面）
-        float maxPerFaceProb = MAX_EFFECT_RATE / WORKING_FACES; // = 0.1
+        // 满速时每面的触发概率：效果上限 ÷ 6 个工作面 ÷ 配置的催生间隔
+        float maxPerFaceProb = MAX_EFFECT_RATE / WORKING_FACES / ModConfig.Common.acceleratorIntervalTicks();
 
-        // 随转速线性增长，超过满速也封顶，绝不越过 1/10
+        // 随转速线性增长，超过满速也封顶
         float perFaceProb = maxPerFaceProb * (Math.abs(speed) / FULL_SPEED);
         perFaceProb = Math.min(perFaceProb, maxPerFaceProb);
 
@@ -75,8 +80,9 @@ public class MechanicalAcceleratorBlockEntity extends KineticBlockEntity {
         boolean running = speed != 0;
 
         // 每 tick 期望施加的随机刻总数（6 个面求和后与 tick() 内 perFaceProb 公式等价）
+        int interval = ModConfig.Common.acceleratorIntervalTicks();
         float expectedPerTick = running
-                ? Math.min(MAX_EFFECT_RATE * (speed / FULL_SPEED), MAX_EFFECT_RATE)
+                ? Math.min(MAX_EFFECT_RATE * (speed / FULL_SPEED), MAX_EFFECT_RATE) / interval
                 : 0f;
         float per20 = Math.round(expectedPerTick * 20f * 10f) / 10f;
 

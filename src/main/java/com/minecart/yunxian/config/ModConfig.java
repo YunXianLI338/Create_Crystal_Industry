@@ -127,6 +127,22 @@ public final class ModConfig {
             return flag == null || flag.get();
         }
 
+        // ===== 催生器 =====
+        public static final ModConfigSpec.IntValue ACCELERATOR_INTERVAL_TICKS = BUILDER
+                .comment(
+                        "Ticks between two acceleration passes (1 = every tick, the default).",
+                        "Both accelerators scale with it: larger = slower. The electric one pays its energy cost per pass.")
+                .translation(LANG_PREFIX + "acceleratorIntervalTicks")
+                .defineInRange("acceleratorIntervalTicks", 1, 1, 100);
+
+        /**
+         * 两次催生之间的 tick 数，电力与动力催生器共用（下限 1 防止除零）。
+         * 护目镜的倍率也读它——客户端读的是本地配置，多人游戏里服务端改过该值时会与实际不符（仅影响显示）。
+         */
+        public static int acceleratorIntervalTicks() {
+            return Math.max(1, ACCELERATOR_INTERVAL_TICKS.get());
+        }
+
         // ===== 回响望远镜 =====
         public static final ModConfigSpec.IntValue SCAN_RADIUS = BUILDER
                 .comment(

@@ -3,6 +3,7 @@ package com.minecart.yunxian.blockentity;
 import java.util.List;
 
 import com.minecart.yunxian.block.AcceleratorBlock;
+import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModBlockEntities;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -25,7 +26,6 @@ public class AcceleratorBlockEntity extends BlockEntity implements IEnergyStorag
     private static final int MAX_ENERGY = 10_000;
     private static final int MAX_RECEIVE = 100;
     private static final int ENERGY_COST_PER_OPERATION = 100;
-    private static final int INTERVAL_TICKS = 1;
 
     /** 相邻催生器之间每 tick 的最大传输量 */
     private static final int MAX_TRANSFER_PER_TICK = 4000;
@@ -48,8 +48,9 @@ public class AcceleratorBlockEntity extends BlockEntity implements IEnergyStorag
 
         transmitToNeighbors();   // 相邻催生器互传电力
 
+        // 两次催生之间的 tick 数由配置决定（默认 1 = 每 tick 一次）；电力按「每次催生」结算
         tickCounter++;
-        if (tickCounter % INTERVAL_TICKS != 0) {
+        if (tickCounter % ModConfig.Common.acceleratorIntervalTicks() != 0) {
             return;
         }
 
@@ -177,8 +178,11 @@ public class AcceleratorBlockEntity extends BlockEntity implements IEnergyStorag
         // 改用 Component.translatable 原样解析自家命名空间
         boolean running = getBlockState().getValue(AcceleratorBlock.POWERED);
 
-        // 运行中每 tick 必定对 6 个方向各触发一次 randomTick（确定值，非期望值）
-        float per20 = running ? RANDOM_TICKS_PER_TICK * 20f : 0f;
+        // 运行中每 interval tick 必定对 6 个方向各触发一次 randomTick（确定值，非期望值）
+        int interval = ModConfig.Common.acceleratorIntervalTicks();
+        float per20 = running
+                ? Math.round(RANDOM_TICKS_PER_TICK * 20f / interval * 10f) / 10f
+                : 0f;
 
         // 状态：工作中 / 已停止
         CreateLang.builder()

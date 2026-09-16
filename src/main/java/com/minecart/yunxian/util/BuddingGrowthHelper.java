@@ -6,6 +6,7 @@ import java.util.Locale;
 import com.minecart.yunxian.block.AcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.blockentity.MechanicalAcceleratorBlockEntity;
+import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.integration.ae2.AE2Budding;
 import com.minecart.yunxian.registry.ModBlocks;
 import com.simibubi.create.foundation.utility.CreateLang;
@@ -46,6 +47,8 @@ public final class BuddingGrowthHelper {
      * 多个催生器可叠加（同一母岩最多贴 6 台）。
      */
     static double acceleratorRandomTicksPerSecond(Level level, BlockPos pos) {
+        // 两次催生之间的 tick 数（两种催生器共用的配置；客户端读本地配置，仅影响显示）
+        int interval = ModConfig.Common.acceleratorIntervalTicks();
         double perSecond = 0;
         for (Direction dir : Direction.values()) {
             BlockPos neighbor = pos.relative(dir);
@@ -55,7 +58,7 @@ public final class BuddingGrowthHelper {
             if (block instanceof AcceleratorBlock) {
                 // POWERED 由服务端 setBlock(flag 3) 同步，客户端可直接反映运行状态
                 if (state.getValue(AcceleratorBlock.POWERED))
-                    perSecond += 20.0; // 每游戏 tick 1 次 randomTick
+                    perSecond += 20.0 / interval; // 每 interval tick 对每个面施加 1 次 randomTick
             } else if (block instanceof MechanicalAcceleratorBlock) {
                 BlockEntity be = level.getBlockEntity(neighbor);
                 if (be instanceof MechanicalAcceleratorBlockEntity mech) {
@@ -63,7 +66,7 @@ public final class BuddingGrowthHelper {
                     if (speed != 0) {
                         // 与 MechanicalAcceleratorBlockEntity.tick() 中 perFaceProb 完全一致
                         float maxPerFace = MechanicalAcceleratorBlockEntity.MAX_EFFECT_RATE
-                                / MechanicalAcceleratorBlockEntity.WORKING_FACES;
+                                / MechanicalAcceleratorBlockEntity.WORKING_FACES / interval;
                         float perFaceProb = Math.min(
                                 maxPerFace * (speed / MechanicalAcceleratorBlockEntity.FULL_SPEED),
                                 maxPerFace);

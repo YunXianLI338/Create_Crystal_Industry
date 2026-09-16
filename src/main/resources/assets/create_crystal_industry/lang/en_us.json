@@ -202,6 +202,8 @@
     "create_crystal_industry.configuration.soulSandMargin.tooltip": "Scatter range: how many blocks outward from the structure edge soul sand may spawn.",
     "create_crystal_industry.configuration.soulSandSink": "Soul Sand Burial Depth",
     "create_crystal_industry.configuration.soulSandSink.tooltip": "How many blocks below the seafloor surface the soul sand is buried (1 = a one-block-deep pit).",
+    "create_crystal_industry.configuration.acceleratorIntervalTicks": "Acceleration Interval (ticks)",
+    "create_crystal_industry.configuration.acceleratorIntervalTicks.tooltip": "Ticks between two acceleration passes.\n1 = every tick (default); larger = slower.\nBoth accelerators scale with it, and the electric one pays its energy cost per pass.\nThe Goggles multiplier follows this value too.",
     "create_crystal_industry.configuration.glowstoneBuddingChance": "Glowstone Budding Replacement Chance",
     "create_crystal_industry.configuration.glowstoneBuddingChance.tooltip": "Chance (0.0–1.0) that a naturally generated glowstone cluster gets its lowest block replaced with glowstone budding.\n0.0 = never, 1.0 = every cluster.",
     "create_crystal_industry.configuration.glowstoneGenerateBuds": "Glowstone Budding Generates Buds",

@@ -202,6 +202,8 @@
     "create_crystal_industry.configuration.soulSandMargin.tooltip": "灵魂沙从结构边缘向外扩展的格数。",
     "create_crystal_industry.configuration.soulSandSink": "灵魂沙埋入深度",
     "create_crystal_industry.configuration.soulSandSink.tooltip": "灵魂沙埋入海床表面的格数（1 = 在海床表面下 1 格形成小坑）。",
+    "create_crystal_industry.configuration.acceleratorIntervalTicks": "催生间隔（tick）",
+    "create_crystal_industry.configuration.acceleratorIntervalTicks.tooltip": "两次催生之间相隔多少个 tick。\n1 = 每 tick 施加一次（默认），数值越大越慢。\n电力与动力催生器同比例缩放；电力催生器按「每次催生」结算能量消耗。\n护目镜显示的倍率也会跟着变。",
     "create_crystal_industry.configuration.glowstoneBuddingChance": "荧石母岩替换概率",
     "create_crystal_industry.configuration.glowstoneBuddingChance.tooltip": "自然生成的荧石团最底部方块被替换为荧石母岩的概率（0.0–1.0）。\n0.0 = 永不替换，1.0 = 每个荧石团都替换。",
     "create_crystal_industry.configuration.glowstoneGenerateBuds": "荧石母岩自带晶芽",
