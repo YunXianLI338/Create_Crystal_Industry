@@ -1,0 +1,6 @@
+// 1.21.1	2026-09-16T22:45:37.7620259	Tags for minecraft:block mod id create_crystal_industry
+f17012c0cf0e0d2ff15db09c93ec38a33a402b83 data/c/tags/block/budding_blocks.json
+0ac288dd1598c2d0e46448e8d0337f08f282b235 data/minecraft/tags/block/mineable/pickaxe.json
+5aa3602fe356cb086ca1d32e55a06b16fe0c71eb data/minecraft/tags/block/needs_diamond_tool.json
+deb42d64b3539ac19fa4e830e58ee8a6ec226d9a data/minecraft/tags/block/needs_iron_tool.json
+58bbb7cabd06ba5d108e67badcaba2eadfdbd403 data/minecraft/tags/block/needs_stone_tool.json

@@ -1,7 +1,0 @@
-{
-    "parent": "block/cross",
-    "render_type": "cutout",
-    "textures": {
-        "cross": "create_crystal_industry:block/raw_gold/raw_gold_large_bud"
-    }
-}

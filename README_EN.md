@@ -73,6 +73,25 @@ Every machine ships with a Create-style Goggles info panel (growth status, work 
 
 ---
 
+## Development: Adding a Budding Family & Data Generation
+
+Everything that defines a budding family (light/water/energy requirements, growth chance, block
+conversion, light levels, sounds, drops) lives in one table:
+`src/main/java/com/minecart/yunxian/budding/BuddingFamilies.java` — **adding a family means adding
+one entry there**. Block registration, growth logic, goggles tooltips, the creative tab, the world-gen
+config flag and Ponder registration are all derived from it.
+
+Generate the JSON assets with `./gradlew runData`. **AE2 must be present in `run/mods`** (the run
+aborts otherwise, to avoid treating the already-generated Fluix assets as stale and deleting them).
+Output goes to `src/generated/resources`, which is committed. These are now generated — do not
+hand-write them: `blockstates/`, `models/block/`, `models/item/`, the budding and bud loot tables,
+the `c:budding_blocks` tags, and the `mineable/pickaxe` / `needs_*_tool` tags.
+
+Still hand-written: textures (and `.mcmeta`), the cluster and Fluix loot tables (their structure and
+mod conditions cannot be reproduced faithfully by the generator), world-gen JSON, and lang files.
+
+---
+
 ## License
 
 **This mod may be used in any modpack, with no further permission required** — public or private, free or monetized. The condition is attribution: credit **YunXian_LI** and link back to the official download page.

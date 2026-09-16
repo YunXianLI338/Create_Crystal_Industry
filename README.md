@@ -73,6 +73,25 @@
 
 ---
 
+## 开发：新增母岩与数据生成
+
+母岩的全部特点（光照/含水/充能要求、生长概率、方块转化、亮度音效、掉落物）集中在
+`src/main/java/com/minecart/yunxian/budding/BuddingFamilies.java` 这一张表里——
+**新增一个母岩家族＝在表里加一条**，方块注册、生长逻辑、护目镜提示、创造模式标签、
+世界生成开关与 Ponder 条目都会自动派生。
+
+生成 JSON 资产：`./gradlew runData`。**运行前必须确保 `run/mods` 里有 AE2**（否则会
+直接中止，避免把已生成的福鲁伊克斯资产判为过期文件删除），输出目录 `src/generated/resources`
+已纳入版本管理。以下文件由数据生成接管，请勿手写：
+
+`blockstates/`、`models/block/`、`models/item/`、母岩与芽的掉落表、`c:budding_blocks`
+标签、`mineable/pickaxe` 与 `needs_*_tool` 标签。
+
+仍需手写的：材质（含 `.mcmeta`）、晶簇与福鲁伊克斯的掉落表（结构与模组条件无法由生成器
+等价复刻）、世界生成 JSON、语言文件。
+
+---
+
 ## 授权
 
 **本模组允许被用于任何整合包，无需另行申请许可**——公开或私有、免费或盈利均可，条件是保留作者署名（YunXian_LI）并附上官方发布页链接。

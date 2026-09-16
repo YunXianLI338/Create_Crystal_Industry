@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "create_crystal_industry:block/fluix/fluix_medium_bud"
+  }
+}

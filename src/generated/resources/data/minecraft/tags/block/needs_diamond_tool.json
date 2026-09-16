@@ -1,0 +1,9 @@
+{
+  "values": [
+    "create_crystal_industry:echo_budding",
+    "create_crystal_industry:echo_small_bud",
+    "create_crystal_industry:echo_medium_bud",
+    "create_crystal_industry:echo_large_bud",
+    "create_crystal_industry:echo_cluster"
+  ]
+}

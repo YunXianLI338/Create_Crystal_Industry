@@ -4,6 +4,7 @@ import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.behaviour.SmartDrillMovementBehaviour;
 import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.client.ModRenderers;
+import com.minecart.yunxian.datagen.YunxianDataGen;
 import com.minecart.yunxian.registry.*;
 import com.minecart.yunxian.util.NightVisionWearHelper;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -38,6 +39,8 @@ public class Yunxian {
         ModFeatures.register(modEventBus);
         ModArmInteractionPointTypes.register(modEventBus);
         modEventBus.addListener(ModBlockEntities::registerCapabilities);
+        // 数据生成（./gradlew runData）：只在 data 运行里触发，正常游戏不受影响
+        modEventBus.addListener(YunxianDataGen::gatherData);
     }
 
     private static void commonSetup(FMLCommonSetupEvent event) {

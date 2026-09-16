@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "create_crystal_industry:block/flammable_ice/flammable_ice_small_bud"
+  }
+}

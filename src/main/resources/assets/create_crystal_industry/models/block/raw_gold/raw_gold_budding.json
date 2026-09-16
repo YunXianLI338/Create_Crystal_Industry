@@ -1,6 +1,0 @@
-{
-    "parent": "minecraft:block/cube_all",
-    "textures": {
-        "all": "create_crystal_industry:block/raw_gold/raw_gold_budding"
-    }
-}

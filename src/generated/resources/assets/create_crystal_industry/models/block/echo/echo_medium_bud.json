@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cross",
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "cross": "create_crystal_industry:block/echo/echo_medium_bud"
+  }
+}

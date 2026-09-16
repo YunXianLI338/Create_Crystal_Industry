@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "create_crystal_industry:block/raw_zinc/raw_zinc_budding"
+    }
+  }
+}

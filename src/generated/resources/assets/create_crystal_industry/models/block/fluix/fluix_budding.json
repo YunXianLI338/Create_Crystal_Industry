@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "create_crystal_industry:block/fluix/fluix_budding"
+  }
+}

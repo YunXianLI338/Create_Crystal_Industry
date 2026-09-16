@@ -109,7 +109,8 @@ public final class BuddingFamilies {
      * （标签里它们在机器与工具之后）。
      */
     public static final List<RegisteredFamily> ALL = List.of(
-            plain("rose_quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE),
+            plain("rose_quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE,
+                    () -> externalBlock("create:rose_quartz_block")),
 
             ore("raw_iron", ToolTier.STONE,
                     () -> Blocks.IRON_ORE, () -> Blocks.DEEPSLATE_IRON_ORE, () -> Blocks.RAW_IRON_BLOCK),
@@ -167,14 +168,16 @@ public final class BuddingFamilies {
     // ==================== 家族工厂 ====================
 
     /** 普通母岩：只有通用生长，没有转化与额外要求 */
-    private static RegisteredFamily plain(String id, BuddingModel model, ToolTier tier) {
-        return register(new BuddingFamily(id, model, tier, false, false, PLAIN_GROWTH, PLAIN_APPEARANCE));
+    private static RegisteredFamily plain(String id, BuddingModel model, ToolTier tier,
+                                          Supplier<? extends ItemLike> drop) {
+        return register(new BuddingFamily(id, model, tier, false, false, drop, PLAIN_GROWTH, PLAIN_APPEARANCE));
     }
 
     /**
      * 矿石母岩：相邻石头/深板岩 → 对应矿石；相邻粗矿块（钻石/绿宝石/青金石为矿物块）→ 本母岩。
+     * 被打碎时掉落的也是同一档矿物块。
      *
-     * @param veinBlock 会再生出本母岩的方块
+     * @param veinBlock 会再生出本母岩的方块，同时是它的掉落物
      */
     private static RegisteredFamily ore(String id, ToolTier tier, Supplier<Block> stoneOre,
                                         Supplier<Block> deepslateOre, Supplier<Block> veinBlock) {
@@ -186,7 +189,7 @@ public final class BuddingFamilies {
 
         Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
-        return register(new BuddingFamily(id, BuddingModel.CUBE_ALL, tier, true, false,
+        return register(new BuddingFamily(id, BuddingModel.CUBE_ALL, tier, true, false, veinBlock,
                 growth, PLAIN_APPEARANCE));
     }
 
@@ -204,7 +207,7 @@ public final class BuddingFamilies {
                 List.of(DARK_LIGHT, DARK_LIGHT, DARK_LIGHT), DARK_LIGHT, null,
                 BlockEntityKind.ECHO_DISPLAY, 0, null, null, List.of());
         return register(new BuddingFamily("echo", BuddingModel.CUBE_ALL, ToolTier.DIAMOND, true, false,
-                growth, appearance));
+                () -> Blocks.SCULK, growth, appearance));
     }
 
     /** 石英母岩：下界岩 → 石英矿；平滑石英 → 本母岩 */
@@ -217,7 +220,7 @@ public final class BuddingFamilies {
         Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
         return register(new BuddingFamily("quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE, true, false,
-                growth, PLAIN_APPEARANCE));
+                () -> Blocks.SMOOTH_QUARTZ, growth, PLAIN_APPEARANCE));
     }
 
     /** 红石母岩：矿石母岩的转化规则 + 母岩与各级芽/簇都输出红石信号 */
@@ -231,7 +234,7 @@ public final class BuddingFamilies {
         Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.REDSTONE, REDSTONE_BUDDING_SIGNAL);
         return register(new BuddingFamily("redstone", BuddingModel.CUBE_ALL, ToolTier.IRON, true, false,
-                growth, PLAIN_APPEARANCE));
+                () -> Blocks.REDSTONE_BLOCK, growth, PLAIN_APPEARANCE));
     }
 
     /** 荧石母岩：母岩与各级芽/簇发光 */
@@ -239,7 +242,7 @@ public final class BuddingFamilies {
         Appearance appearance = new Appearance(GLOWSTONE_BUD_LIGHT, GLOWSTONE_CLUSTER_LIGHT, null,
                 BlockEntityKind.SHARED_GROWTH, GLOWSTONE_BUDDING_LIGHT, null, null, List.of());
         return register(new BuddingFamily("glowstone", BuddingModel.CUBE_ALL, ToolTier.NONE, true, false,
-                PLAIN_GROWTH, appearance));
+                () -> Blocks.GLOWSTONE, PLAIN_GROWTH, appearance));
     }
 
     /** 可燃冰母岩：只有目标格含水才生长；冰音效 + 蓝冰摩擦 */
@@ -250,7 +253,7 @@ public final class BuddingFamilies {
                 BlockEntityKind.ICE_DISPLAY, 0, SoundType.GLASS, ICE_FRICTION,
                 List.of(() -> ModBlocks.FLAMMABLE_ICE_BLOCK.get(), () -> ModItems.FLAMMABLE_ICE.get()));
         return register(new BuddingFamily("flammable_ice", BuddingModel.CUBE_ALL, ToolTier.NONE, true, false,
-                growth, appearance));
+                () -> ModBlocks.FLAMMABLE_ICE_BLOCK.get(), growth, appearance));
     }
 
     /** 福鲁伊克斯母岩：只在 AE2 存在时注册；生长与传播都要求 AE 供电 */
@@ -264,7 +267,7 @@ public final class BuddingFamilies {
         Appearance appearance = new Appearance(INHERIT_BUD_LIGHT, null, null,
                 BlockEntityKind.AE2_GRID, 0, null, null, List.of());
         return register(new BuddingFamily("fluix", BuddingModel.CUBE_ALL, ToolTier.STONE, false, true,
-                growth, appearance));
+                () -> externalBlock("ae2:fluix_block"), growth, appearance));
     }
 
     // ==================== 注册 ====================

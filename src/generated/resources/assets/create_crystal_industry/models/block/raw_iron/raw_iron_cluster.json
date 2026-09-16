@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cross",
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "cross": "create_crystal_industry:block/raw_iron/raw_iron_cluster"
+  }
+}

@@ -1,7 +1,0 @@
-{
-    "parent": "block/cross",
-    "render_type": "cutout",
-    "textures": {
-        "cross": "create_crystal_industry:block/flammable_ice/flammable_ice_medium_bud"
-    }
-}

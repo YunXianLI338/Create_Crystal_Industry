@@ -35,6 +35,8 @@ public record BuddingFamily(
         boolean generateInWorld,
         /** 是否只在 AE2 存在时注册（仅福鲁伊克斯母岩） */
         boolean ae2Gated,
+        /** 母岩被打碎时掉落什么（数据生成用：比母岩低一档的方块） */
+        Supplier<? extends ItemLike> buddingDrop,
         /** 生长特点 */
         Growth growth,
         /** 外观与注册特点 */
