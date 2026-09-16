@@ -12,6 +12,7 @@
         "create_crystal_industry:echo_budding",
         "create_crystal_industry:quartz_budding",
         "create_crystal_industry:redstone_budding",
+        "create_crystal_industry:glowstone_budding",
         "create_crystal_industry:flammable_ice_budding",
         { "id": "create_crystal_industry:fluix_budding", "required": false }
     ]
