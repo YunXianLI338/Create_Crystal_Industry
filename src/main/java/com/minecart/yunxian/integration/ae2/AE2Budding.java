@@ -2,8 +2,12 @@ package com.minecart.yunxian.integration.ae2;
 
 import com.minecart.yunxian.blockentity.budding.FluixBuddingBlockEntity;
 
+import appeng.block.misc.GrowthAcceleratorBlock;
+import appeng.core.AEConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * 母岩侧的 AE2 桥接：福鲁伊克斯母岩的生长付费。
@@ -29,5 +33,31 @@ public final class AE2Budding {
     public static boolean tryConsumeGrowthEnergy(ServerLevel level, BlockPos pos) {
         return level.getBlockEntity(pos) instanceof FluixBuddingBlockEntity budding
                 && budding.tryConsumeGrowthEnergy();
+    }
+
+    /**
+     * 该位置是否为「运行中」的 AE2 晶体催生器（护目镜用）。
+     * <p>
+     * 客户端可安全调用：AE2 的 {@code AEBaseBlockEntity.markForUpdate()} 内部会用
+     * {@code setBlockAndUpdate} 把 {@code powered} 写回方块状态（它自己的开/关模型就靠这个属性），
+     * 所以客户端的方块状态与运行状态一致——与模组自己的电力催生器读 POWERED 是同一套办法。
+     */
+    public static boolean isActiveGrowthAccelerator(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.getBlock() instanceof GrowthAcceleratorBlock
+                && state.getValue(GrowthAcceleratorBlock.POWERED);
+    }
+
+    /**
+     * AE2 晶体催生器的随机刻速率（次/秒／每个相邻方块）。
+     * <p>
+     * 它按自己的配置 {@code growthAccelerator}（两次施加之间的 tick 数，默认 10）被唤醒，
+     * 每次唤醒对 6 个相邻的可加速方块各施加一次随机刻，故单格速率为 {@code 20 / speed}。
+     * <p>
+     * 注意：多人游戏里这里读的是**本地**配置，服务端把该值改过时会与实际速率不符——只影响显示。
+     */
+    public static double growthAcceleratorRandomTicksPerSecond() {
+        int ticksBetween = Math.max(1, AEConfig.instance().getGrowthAcceleratorSpeed());
+        return 20.0 / ticksBetween;
     }
 }

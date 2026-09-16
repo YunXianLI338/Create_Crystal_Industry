@@ -6,6 +6,8 @@ import java.util.Locale;
 import com.minecart.yunxian.block.AcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.blockentity.MechanicalAcceleratorBlockEntity;
+import com.minecart.yunxian.integration.ae2.AE2Budding;
+import com.minecart.yunxian.registry.ModBlocks;
 import com.simibubi.create.foundation.utility.CreateLang;
 
 import net.minecraft.ChatFormatting;
@@ -39,7 +41,8 @@ public final class BuddingGrowthHelper {
 
     /**
      * 周围催生器对该母岩的随机刻施加速率（次/秒）。
-     * 遍历 6 个邻格，电力催生器运行中每 tick 施加 1 次；动力催生器按单面概率。
+     * 遍历 6 个邻格：电力催生器运行中每 tick 施加 1 次；动力催生器按单面概率；
+     * AE2 的晶体催生器（可选联动）按它在 AE2 配置里的间隔施加。
      * 多个催生器可叠加（同一母岩最多贴 6 台）。
      */
     static double acceleratorRandomTicksPerSecond(Level level, BlockPos pos) {
@@ -67,6 +70,12 @@ public final class BuddingGrowthHelper {
                         perSecond += perFaceProb * 20.0;
                     }
                 }
+            } else if (ModBlocks.AE2_LOADED && AE2Budding.isActiveGrowthAccelerator(level, neighbor)) {
+                // AE2 联动：它只加速 ae2:growth_acceleratable 里的方块（含 #c:budding_blocks），
+                // 本模组的母岩都在其中；速率由它自己的配置决定，默认 10 tick 施加一次。
+                // 前置的 AE2_LOADED 判断必须保留：它保证无 AE2 时永远不会触碰 AE2Budding
+                // （否则 JVM 会在执行到 invokestatic 时去加载缺失的 appeng 类型而崩溃）。
+                perSecond += AE2Budding.growthAcceleratorRandomTicksPerSecond();
             }
         }
         return perSecond;

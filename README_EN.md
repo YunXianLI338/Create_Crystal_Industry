@@ -68,6 +68,7 @@ Budding blocks generate at the depths of the ore they correspond to, usually **e
 - **Required**: Create 6.0.10+
 - **Optional**: AE2 (enables Budding Fluix), Curios (goggles in the head slot), JEI
 - **Without AE2 the mod starts normally** — it simply does not register the Fluix content
+- **AE2's Crystal Growth Accelerator also speeds up this mod's budding blocks** (it applies random ticks at its own configured interval); the Goggles growth multiplier counts it too
 
 Every machine ships with a Create-style Goggles info panel (growth status, work speed, growth multiplier) and **Ponder scenes**.
 
