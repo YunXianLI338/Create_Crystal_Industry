@@ -59,9 +59,7 @@ public final class BuddingFamilies {
 
     // ==================== 每型数值常量 ====================
     // 原先散落在各个母岩子类里，集中在此：调整任何一个母岩的手感都只改这一处。
-
-    /** 统一的生长概率基数：每次随机刻有 1/5 概率推进一次 */
-    public static final int GROWTH_CHANCE = 5;
+    // 例外：生长概率不在本类，由配置文件按 GrowthSpeed 四档决定（默认全部「正常」）。
 
     /** 石头/深板岩 → 对应矿石 */
     private static final int ORE_CONVERSION_CHANCE = 20;
@@ -95,7 +93,7 @@ public final class BuddingFamilies {
     // ==================== 常用组合 ====================
 
     /** 绝大多数母岩共用的生长特点：无光照/能量要求，无转化，不输出信号 */
-    private static final Growth PLAIN_GROWTH = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD,
+    private static final Growth PLAIN_GROWTH = new Growth(GrowthRule.STANDARD,
             LightRequirement.ANY, EnergyRequirement.FREE, List.of(), ClusterKind.STANDARD, 0);
 
     /** 绝大多数母岩共用的外观：沿用原版亮度/音效，使用共享展示 BE */
@@ -187,7 +185,7 @@ public final class BuddingFamilies {
                         Replacement.of(() -> Blocks.DEEPSLATE, deepslateOre)),
                 BlockConversion.of(SPREAD_CHANCE, 1, Replacement.toSelf(veinBlock)));
 
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
+        Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
         return register(new BuddingFamily(id, BuddingModel.CUBE_ALL, tier, true, false, veinBlock,
                 growth, PLAIN_APPEARANCE));
@@ -199,7 +197,7 @@ public final class BuddingFamilies {
                 BlockConversion.of(ECHO_CONVERSION_CHANCE, ECHO_CONVERSION_RADIUS,
                         Replacement.of(ModTags.ECHO_CONVERTIBLE, () -> Blocks.SCULK)));
 
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD,
+        Growth growth = new Growth(GrowthRule.STANDARD,
                 LightRequirement.below(ECHO_GROWTH_LIGHT_THRESHOLD), EnergyRequirement.FREE,
                 conversions, ClusterKind.STANDARD, 0);
         // 芽/簇不自发光：一旦发光就会顶掉自己的生长位
@@ -217,7 +215,7 @@ public final class BuddingFamilies {
                         Replacement.of(() -> Blocks.NETHERRACK, () -> Blocks.NETHER_QUARTZ_ORE)),
                 BlockConversion.of(SPREAD_CHANCE, 1, Replacement.toSelf(() -> Blocks.SMOOTH_QUARTZ)));
 
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
+        Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
         return register(new BuddingFamily("quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE, true, false,
                 () -> Blocks.SMOOTH_QUARTZ, growth, PLAIN_APPEARANCE));
@@ -231,7 +229,7 @@ public final class BuddingFamilies {
                         Replacement.of(() -> Blocks.DEEPSLATE, () -> Blocks.DEEPSLATE_REDSTONE_ORE)),
                 BlockConversion.of(SPREAD_CHANCE, 1, Replacement.toSelf(() -> Blocks.REDSTONE_BLOCK)));
 
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
+        Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.REDSTONE, REDSTONE_BUDDING_SIGNAL);
         return register(new BuddingFamily("redstone", BuddingModel.CUBE_ALL, ToolTier.IRON, true, false,
                 () -> Blocks.REDSTONE_BLOCK, growth, PLAIN_APPEARANCE));
@@ -247,7 +245,7 @@ public final class BuddingFamilies {
 
     /** 可燃冰母岩：只有目标格含水才生长；冰音效 + 蓝冰摩擦 */
     private static RegisteredFamily flammableIce() {
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.SUBMERGED, LightRequirement.ANY,
+        Growth growth = new Growth(GrowthRule.SUBMERGED, LightRequirement.ANY,
                 EnergyRequirement.FREE, List.of(), ClusterKind.STANDARD, 0);
         Appearance appearance = new Appearance(INHERIT_BUD_LIGHT, null, SoundType.GLASS,
                 BlockEntityKind.ICE_DISPLAY, 0, SoundType.GLASS, ICE_FRICTION,
@@ -262,7 +260,7 @@ public final class BuddingFamilies {
                 BlockConversion.of(SPREAD_CHANCE, 1,
                         Replacement.toSelf(() -> externalBlock("ae2:fluix_block"))).gated());
 
-        Growth growth = new Growth(GROWTH_CHANCE, GrowthRule.STANDARD, LightRequirement.ANY,
+        Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.AE2_GRID, conversions, ClusterKind.STANDARD, 0);
         Appearance appearance = new Appearance(INHERIT_BUD_LIGHT, null, null,
                 BlockEntityKind.AE2_GRID, 0, null, null, List.of());

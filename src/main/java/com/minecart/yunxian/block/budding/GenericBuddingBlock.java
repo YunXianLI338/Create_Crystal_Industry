@@ -12,6 +12,7 @@ import com.minecart.yunxian.budding.BuddingFamily;
 import com.minecart.yunxian.budding.BuddingFamily.BlockConversion;
 import com.minecart.yunxian.budding.BuddingFamily.EnergyRequirement;
 import com.minecart.yunxian.budding.BuddingFamily.Replacement;
+import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.integration.ae2.AE2Budding;
 import com.minecart.yunxian.registry.ModBlockEntities;
 
@@ -116,14 +117,22 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
     // ==================== 生长 ====================
 
     /**
-     * 通用生长：母岩自身不在液体中，且 1/growthChance 判定通过时，
+     * 生长概率基数 n：每次随机刻有 1/n 的概率推进一级，档位（极慢/慢/正常/快）来自配置文件。
+     */
+    private int growthChance() {
+        return ModConfig.Common.growthChance(family.id());
+    }
+
+    /**
+     * 通用生长：母岩自身不在液体中，且 1/{@link #growthChance()} 判定通过时，
      * 随机选一个面推进相邻晶簇一级（空位长新芽）。
      * <p>
      * 注意随机数消耗顺序：液体检查在 {@code nextInt(growthChance)} 之前，
-     * 调换会改变生长速率。
+     * 调换会改变生长速率。快档（n=1）时 {@code nextInt(1)} 恒为 0，但仍消耗一次随机数——
+     * 不为快档特判，各档的随机序列才一致。
      */
     private void growStandard(ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!level.getFluidState(pos).isEmpty() || random.nextInt(family.growth().chance()) != 0) {
+        if (!level.getFluidState(pos).isEmpty() || random.nextInt(growthChance()) != 0) {
             return;
         }
 
@@ -155,7 +164,7 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
      * 长新芽还额外要求那是水源方块（waterlogged 的芽/簇其流体状态即水，不受影响）。
      */
     private void growSubmerged(ServerLevel level, BlockPos pos, RandomSource random) {
-        if (random.nextInt(family.growth().chance()) != 0) {
+        if (random.nextInt(growthChance()) != 0) {
             return;
         }
 

@@ -14,6 +14,8 @@ Stop strip-mining. Find a budding block, and let it grow.
 
 Every budding block grows **Small Bud → Medium Bud → Large Bud → Cluster** from all six faces, exactly like Budding Amethyst (a 1-in-5 chance per random tick — same speed as vanilla). The budding block itself is never consumed; harvest the cluster and it starts over.
 
+Growth speed comes in four tiers — **Very Slow (1/50), Slow (1/20), Normal (1/5), Fast (1/1)** — all defaulting to Normal. Which budding block sits in which tier is assigned by id in the config file, so you can make just a few of them faster or slower.
+
 | Budding Block | Extra Growth Condition |
 | --- | --- |
 | Raw Iron, Raw Gold, Raw Copper, Raw Zinc, Diamond, Emerald, Lapis Lazuli, Redstone, Quartz | — |
@@ -59,7 +61,7 @@ Both accelerators' **acceleration interval** is configurable (`Acceleration Inte
 
 Budding blocks generate at the depths of the ore they correspond to, usually **embedded inside ore veins** (Budding Diamond -64~16, Budding Raw Iron -24~56, Budding Raw Copper -16~112, Budding Raw Zinc -63~70, Budding Lapis Lazuli -64~64, Budding Redstone -63~15, and so on). Budding Glowstone appears at the bottom of naturally generated glowstone blobs, and Budding Flammable Ice only generates on the seafloor of deep oceans.
 
-**Every one of these can be toggled individually in the config file**, along with Flammable Ice rarity and the Glowstone budding replacement chance.
+**Every one of these can be toggled individually in the config file**, along with Flammable Ice rarity, the Glowstone budding replacement chance and the budding growth speed tiers.
 
 > ⚠️ **Naturally generated Budding Echo summons a Warden when broken.** Ones you place yourself will not.
 
@@ -78,11 +80,14 @@ Every machine ships with a Create-style Goggles info panel (growth status, work 
 
 ## Development: Adding a Budding Family & Data Generation
 
-Everything that defines a budding family (light/water/energy requirements, growth chance, block
+Everything that defines a budding family (light/water/energy requirements, growth rule, block
 conversion, light levels, sounds, drops) lives in one table:
 `src/main/java/com/minecart/yunxian/budding/BuddingFamilies.java` — **adding a family means adding
 one entry there**. Block registration, growth logic, goggles tooltips, the creative tab, the world-gen
 config flag and Ponder registration are all derived from it.
+The one exception is growth speed: it is a global four-tier setting (`BuddingFamily.GrowthSpeed`)
+driven by four id lists in the config file, and the default members of the NORMAL tier are derived
+from this table too — a new family needs no extra configuration.
 
 Generate the JSON assets with `./gradlew runData`. **AE2 must be present in `run/mods`** (the run
 aborts otherwise, to avoid treating the already-generated Fluix assets as stale and deleting them).

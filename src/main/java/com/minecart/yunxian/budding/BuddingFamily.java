@@ -14,8 +14,11 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * 一个母岩家族的「全部特点」——光照要求、含水要求、充能要求、生长概率、方块转化，
+ * 一个母岩家族的「全部特点」——光照要求、含水要求、充能要求、生长规则、方块转化，
  * 以及各级芽与晶簇的亮度/音效、用哪个方块实体、进不进创造标签、要不要世界生成开关。
+ * <p>
+ * 生长概率<b>不在</b>这张表里：它由配置文件按 {@link GrowthSpeed} 四档决定（见
+ * {@code config.ModConfig.Common#growthChance}），全部母岩默认「正常」。
  * <p>
  * 新增一个母岩家族 = 在 {@link BuddingFamilies} 的表里加一条；方块注册、生长逻辑、
  * 护目镜提示、创造模式标签、配置开关、ponder 条目都由这一条派生。
@@ -55,11 +58,11 @@ public record BuddingFamily(
     // ==================== 生长特点 ====================
 
     /**
-     * 生长特点：概率、规则、光照/能量门槛、随机刻副作用、信号。
+     * 生长特点：规则、光照/能量门槛、随机刻副作用、信号。
+     * <p>
+     * 生长概率不在这里——它由配置文件的四档（{@link GrowthSpeed}）决定。
      */
     public record Growth(
-            /** 生长概率基数：每次随机刻有 1/chance 概率推进一次 */
-            int chance,
             /** 通用，或「只有目标格含水才生长」的可燃冰式 */
             GrowthRule rule,
             /** 生长位的光照要求 */
@@ -110,6 +113,41 @@ public record BuddingFamily(
         STONE,
         IRON,
         DIAMOND
+    }
+
+    /**
+     * 生长速度档位：随机刻抽中母岩时，有 {@code 1/chance()} 的概率推进一级。
+     * <p>
+     * 一个母岩属于哪一档由配置文件的四个列表决定（{@link #configKey()} 就是列表的键名），
+     * 与家族定义表无关；未被任何列表提到的母岩按 {@link #NORMAL} 处理。
+     */
+    public enum GrowthSpeed {
+        /** 极慢：1/50 */
+        VERY_SLOW(50, "growthSpeedVerySlow"),
+        /** 慢：1/20 */
+        SLOW(20, "growthSpeedSlow"),
+        /** 正常：1/5，与原版紫水晶母岩同速（默认档） */
+        NORMAL(5, "growthSpeedNormal"),
+        /** 快：1/1，被抽中必定生长 */
+        FAST(1, "growthSpeedFast");
+
+        private final int chance;
+        private final String configKey;
+
+        GrowthSpeed(int chance, String configKey) {
+            this.chance = chance;
+            this.configKey = configKey;
+        }
+
+        /** 概率基数 n：每次随机刻有 1/n 的概率推进一级 */
+        public int chance() {
+            return chance;
+        }
+
+        /** 本档在配置文件里的键名（四个列表之一） */
+        public String configKey() {
+            return configKey;
+        }
     }
 
     /** 生长规则 */
