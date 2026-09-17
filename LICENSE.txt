@@ -10,11 +10,16 @@ ENGLISH
 All rights are reserved by the author, except for the permissions expressly
 granted below.
 
-1. PERMISSION — MODPACKS
+1. PERMISSION — CURSEFORGE MODPACKS
 
-   You MAY include this mod, unmodified, in any modpack — public or private,
-   free or monetized (including ad revenue, donation perks, or platform reward
-   points) — without asking for permission and without paying any fee.
+   You MAY include this mod, unmodified, in a modpack published on CurseForge —
+   public or private, free or monetized (including ad revenue, donation perks,
+   or platform reward points) — without asking for permission and without
+   paying any fee.
+
+   The modpack MUST be packaged the CurseForge way: it MUST reference this mod
+   in its "manifest.json" by CurseForge project ID and file ID, so the launcher
+   downloads the mod from CurseForge itself.
 
 2. CONDITION — ATTRIBUTION
 
@@ -25,11 +30,16 @@ granted below.
 3. NOT GRANTED
 
    This permission does NOT cover:
-     a) Redistributing this mod as a standalone download, or re-uploading it
+     a) Bundling this mod's jar file inside the modpack archive, or shipping the
+        mod with the pack in any way other than referencing it in
+        "manifest.json".
+     b) Publishing a modpack that contains this mod anywhere other than
+        CurseForge.
+     c) Redistributing this mod as a standalone download, or re-uploading it
         to any site other than the official download page.
-     b) Redistributing modified, decompiled, or recompiled versions of it.
-     c) Selling this mod itself, or any product whose primary value is this mod.
-     d) Claiming authorship of this mod or any part of it.
+     d) Redistributing modified, decompiled, or recompiled versions of it.
+     e) Selling this mod itself, or any product whose primary value is this mod.
+     f) Claiming authorship of this mod or any part of it.
 
    Any of the above requires the author's prior written permission.
 
@@ -47,11 +57,14 @@ granted below.
 
 除下列明确授予的许可外，作者保留所有权利。
 
-1. 许可 —— 整合包
+1. 许可 —— CurseForge 整合包
 
-   你可以将本模组以**未经修改**的形式收录进任何整合包（公开或私有、免费或
-   盈利，包括广告收入、赞助者福利、平台积分等），无需另行申请，也无需支付
-   任何费用。
+   你可以将本模组以**未经修改**的形式收录进发布在 CurseForge 上的整合包
+   （公开或私有、免费或盈利，包括广告收入、赞助者福利、平台积分等），无需
+   另行申请，也无需支付任何费用。
+
+   整合包**必须使用 CurseForge 的标准打包方式**：在 `manifest.json` 中以本
+   模组的 CurseForge 项目 ID 与文件 ID 引用，由启动器从 CurseForge 自行下载。
 
 2. 条件 —— 署名
 
@@ -61,10 +74,13 @@ granted below.
 3. 未授予的权利
 
    上述许可**不包含**：
-     a) 将本模组作为独立下载分发，或转载至官方发布页以外的任何站点；
-     b) 分发本模组的修改版、反编译版或重新编译版；
-     c) 售卖本模组本身，或售卖任何主要价值来自本模组的产品；
-     d) 声称对本模组或其任何部分拥有著作权。
+     a) 把本模组的 jar 直接打进整合包压缩包，或以「引用 manifest.json」以外
+        的任何方式随包分发本模组；
+     b) 将收录本模组的整合包发布到 CurseForge 以外的任何平台；
+     c) 将本模组作为独立下载分发，或转载至官方发布页以外的任何站点；
+     d) 分发本模组的修改版、反编译版或重新编译版；
+     e) 售卖本模组本身，或售卖任何主要价值来自本模组的产品；
+     f) 声称对本模组或其任何部分拥有著作权。
 
    以上任何一项均需获得作者事先的书面许可。
 

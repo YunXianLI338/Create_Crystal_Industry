@@ -97,6 +97,8 @@
 
 ## 授权
 
-**本模组允许被用于任何整合包，无需另行申请许可**——公开或私有、免费或盈利均可，条件是保留作者署名（YunXian_LI）并附上官方发布页链接。
+**本模组仅允许收录进发布在 CurseForge 上的整合包，无需另行申请许可**——公开或私有、免费或盈利均可。
+
+整合包必须使用 **CurseForge 的标准打包方式**：在 `manifest.json` 中以本模组的 CurseForge 项目 ID 与文件 ID 引用，由启动器从 CurseForge 自行下载。**不得把模组 jar 直接打进压缩包**，也不得发布到 CurseForge 以外的平台。条件是保留作者署名（YunXian_LI）并附上官方发布页链接。
 
 完整条款见 [LICENSE.txt](LICENSE.txt)。

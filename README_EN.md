@@ -97,6 +97,8 @@ mod conditions cannot be reproduced faithfully by the generator), world-gen JSON
 
 ## License
 
-**This mod may be used in any modpack, with no further permission required** — public or private, free or monetized. The condition is attribution: credit **YunXian_LI** and link back to the official download page.
+**This mod may only be included in modpacks published on CurseForge, with no further permission required** — public or private, free or monetized.
+
+The pack must use **CurseForge's standard packaging method**: reference this mod in `manifest.json` by its CurseForge project ID and file ID, so the launcher downloads it from CurseForge. **Bundling the jar inside the pack archive is not allowed**, and neither is publishing the pack on any platform other than CurseForge. The condition is attribution: credit **YunXian_LI** and link back to the official download page.
 
 See [LICENSE.txt](LICENSE.txt) for the full terms.
