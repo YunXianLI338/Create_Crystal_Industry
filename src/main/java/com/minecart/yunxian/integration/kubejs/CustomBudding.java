@@ -278,7 +278,7 @@ public final class CustomBudding {
 
         @Override
         public Block createObject() {
-            return new YunxianClusterBlock(stage.stage, stage.height, createProperties(), stage.key);
+            return new YunxianClusterBlock(stage.height, stage.aabbOffset, createProperties(), stage.key);
         }
 
         /**

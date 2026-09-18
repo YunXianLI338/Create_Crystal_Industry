@@ -310,10 +310,10 @@ public final class BuddingFamilies {
     private static YunxianClusterBlock newStageBlock(BuddingFamily spec, Stage stage) {
         BlockBehaviour.Properties properties = stageProperties(spec, stage);
         if (spec.growth().clusterKind() == ClusterKind.REDSTONE) {
-            return new RedstoneClusterBlock(stage.stage, stage.height, properties, stage.key,
+            return new RedstoneClusterBlock(stage.height, stage.aabbOffset, properties, stage.key,
                     REDSTONE_STAGE_SIGNAL[stage.ordinal()]);
         }
-        return new YunxianClusterBlock(stage.stage, stage.height, properties, stage.key);
+        return new YunxianClusterBlock(stage.height, stage.aabbOffset, properties, stage.key);
     }
 
     /** 芽/晶簇属性：从对应的原版紫水晶方块拷贝，再按家族覆盖亮度/音效 */
@@ -363,23 +363,36 @@ public final class BuddingFamilies {
 
     // ==================== 生长阶段 ====================
 
-    /** 四个生长阶段的形状与方块 id 后缀，全部母岩一致 */
+    /**
+     * 四个生长阶段的碰撞箱参数与方块 id 后缀，全部母岩一致。
+     * <p>
+     * 两个数值是原版 {@code Blocks} 里对应紫水晶芽/簇的构造实参，语义就是
+     * {@code AmethystClusterBlock(float height, float aabbOffset, Properties)} 的那两个形参：
+     * 芽/簇的六个朝向碰撞箱全由它们算出，朝上时是
+     * {@code box(aabbOffset, 0, aabbOffset, 16-aabbOffset, height, 16-aabbOffset)}
+     * （见 {@code AmethystClusterBlock} 构造器）。
+     * <p>
+     * <b>顺序不能反、数值不能"顺手修"</b>：原版小芽是 (3, 4)、中芽是 (4, 3)——小芽的
+     * aabbOffset 比中芽还大、height 比中芽还小，看着不成比例，但照抄才能和原版碰撞箱一致。
+     */
     public enum Stage {
-        SMALL_BUD("small_bud", 1, 1, Blocks.SMALL_AMETHYST_BUD),
-        MEDIUM_BUD("medium_bud", 3, 2, Blocks.MEDIUM_AMETHYST_BUD),
-        LARGE_BUD("large_bud", 5, 3, Blocks.LARGE_AMETHYST_BUD),
-        CLUSTER("cluster", 7, 3, Blocks.AMETHYST_CLUSTER);
+        SMALL_BUD("small_bud", 3.0F, 4.0F, Blocks.SMALL_AMETHYST_BUD),
+        MEDIUM_BUD("medium_bud", 4.0F, 3.0F, Blocks.MEDIUM_AMETHYST_BUD),
+        LARGE_BUD("large_bud", 5.0F, 3.0F, Blocks.LARGE_AMETHYST_BUD),
+        CLUSTER("cluster", 7.0F, 3.0F, Blocks.AMETHYST_CLUSTER);
 
         public final String key;
-        public final int stage;
-        public final int height;
+        /** 竖直高度，原版构造器的第一个参数 */
+        public final float height;
+        /** 水平内缩量，原版构造器的第二个参数 */
+        public final float aabbOffset;
         /** 属性拷贝来源 */
         public final Block template;
 
-        Stage(String key, int stage, int height, Block template) {
+        Stage(String key, float height, float aabbOffset, Block template) {
             this.key = key;
-            this.stage = stage;
             this.height = height;
+            this.aabbOffset = aabbOffset;
             this.template = template;
         }
     }

@@ -9,9 +9,9 @@ import net.minecraft.world.level.block.state.BlockState;
 public class RedstoneClusterBlock extends YunxianClusterBlock {
     private final int signalStrength;
 
-    public RedstoneClusterBlock(int stage, int height, BlockBehaviour.Properties properties,
+    public RedstoneClusterBlock(float height, float aabbOffset, BlockBehaviour.Properties properties,
                                 String stageKey, int signalStrength) {
-        super(stage, height, properties, stageKey);
+        super(height, aabbOffset, properties, stageKey);
         this.signalStrength = signalStrength;
     }
 
