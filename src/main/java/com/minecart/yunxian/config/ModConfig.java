@@ -167,7 +167,7 @@ public final class ModConfig {
         /**
          * 四档生长速度各一个配置项，由 {@link GrowthSpeed} 派生：
          * 键名 = {@code GrowthSpeed#configKey()}，值 = 母岩家族 id 列表。
-         * 判定顺序见 {@link #growthChance(String)}。
+         * 判定顺序见 {@link #speedFor(String)}。
          */
         private static final Map<GrowthSpeed, ModConfigSpec.ConfigValue<List<? extends String>>> GROWTH_SPEEDS =
                 buildGrowthSpeeds();
@@ -203,7 +203,7 @@ public final class ModConfig {
         }
 
         // 解析结果缓存。随机刻只在服务端主线程跑，这几个字段无需同步；Map 本身不可变。
-        private static Map<String, Integer> resolvedChances;
+        private static Map<String, GrowthSpeed> resolvedSpeeds;
         private static List<? extends String> cachedVerySlow;
         private static List<? extends String> cachedSlow;
         private static List<? extends String> cachedNormal;
@@ -212,38 +212,50 @@ public final class ModConfig {
         /**
          * 某母岩家族每随机刻的生长概率基数 n（每次随机刻 1/n）。
          * <p>
+         * 随机刻是热路径（催生器每 tick 就会给相邻母岩施加随机刻），所以这里只做一次档位查表，
+         * 判定与缓存都在 {@link #speedFor(String)} 里。
+         */
+        public static int growthChance(String familyId) {
+            return speedFor(familyId).chance();
+        }
+
+        /**
+         * 某母岩家族当前所属的生长档位；没有被任何列表提到时按「正常」。
+         * <p>
+         * 生长引擎只用得上概率（{@link #growthChance}），这个方法给 JEI 的母岩信息页显示档位名用。
+         * <p>
          * 判定顺序：先看三个非「正常」档（极慢 → 慢 → 快），命中即用；都没命中再看「正常」档；
          * 仍未命中按「正常」兜底，所以把「正常」列表删空也不会改变行为。
          * 一个母岩同时出现在两个非「正常」档里时取更慢的一档，并记一条警告。
          * <p>
-         * 随机刻是热路径（催生器每 tick 就会给相邻母岩施加随机刻），故解析结果带缓存：
-         * 四个源列表只要还是原来那批对象就直接复用。配置重载时 NeoForge 会清掉
+         * 解析结果带缓存：四个源列表只要还是原来那批对象就直接复用。配置重载时 NeoForge 会清掉
          * {@code ConfigValue} 的缓存并重新解析出新的 List 实例，因此比较引用就足以判断过期。
          */
-        public static int growthChance(String familyId) {
+        public static GrowthSpeed speedFor(String familyId) {
             List<? extends String> verySlow = speedList(GrowthSpeed.VERY_SLOW);
             List<? extends String> slow = speedList(GrowthSpeed.SLOW);
             List<? extends String> normal = speedList(GrowthSpeed.NORMAL);
             List<? extends String> fast = speedList(GrowthSpeed.FAST);
 
-            Map<String, Integer> chances = resolvedChances;
-            if (chances == null || verySlow != cachedVerySlow || slow != cachedSlow
+            Map<String, GrowthSpeed> speeds = resolvedSpeeds;
+            if (speeds == null || verySlow != cachedVerySlow || slow != cachedSlow
                     || normal != cachedNormal || fast != cachedFast) {
-                chances = resolveGrowthChances();
+                speeds = resolveGrowthSpeeds();
                 cachedVerySlow = verySlow;
                 cachedSlow = slow;
                 cachedNormal = normal;
                 cachedFast = fast;
-                resolvedChances = chances;
+                resolvedSpeeds = speeds;
             }
-            return chances.getOrDefault(familyId, GrowthSpeed.NORMAL.chance());
+            return speeds.getOrDefault(familyId, GrowthSpeed.NORMAL);
         }
 
         private static List<? extends String> speedList(GrowthSpeed speed) {
             return GROWTH_SPEEDS.get(speed).get();
         }
 
-        private static Map<String, Integer> resolveGrowthChances() {
+        /** id → 档位的解析结果；概率由 {@link GrowthSpeed#chance()} 现取，不再单独存一份 */
+        private static Map<String, GrowthSpeed> resolveGrowthSpeeds() {
             Map<String, GrowthSpeed> assignment = new HashMap<>();
             // 先按枚举声明顺序处理三个非「正常」档（极慢 → 慢 → 快，更慢者先占位），
             // 「正常」档留到最后：它默认列出全部母岩，不该盖掉其它三档的显式分配。
@@ -253,10 +265,7 @@ public final class ModConfig {
                 }
             }
             assign(assignment, GrowthSpeed.NORMAL);
-
-            Map<String, Integer> chances = new HashMap<>(assignment.size());
-            assignment.forEach((id, speed) -> chances.put(id, speed.chance()));
-            return Map.copyOf(chances);
+            return Map.copyOf(assignment);
         }
 
         private static void assign(Map<String, GrowthSpeed> assignment, GrowthSpeed speed) {

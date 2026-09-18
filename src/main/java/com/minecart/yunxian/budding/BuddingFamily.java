@@ -36,6 +36,15 @@ public record BuddingFamily(
         ToolTier toolTier,
         /** 是否在世界中生成：决定是否产出一个 generate_&lt;id&gt; 配置开关 */
         boolean generateInWorld,
+        /**
+         * 世界生成 JSON 的出处；null = 本模组没给它发世界生成 JSON。
+         * <p>
+         * 供 JEI 的母岩信息页读取真实的高度/稀有度/生物群系用（见 {@code compat.jei}），
+         * 与实际生成逻辑是同一份数据，改了 JSON、重新构建后页面就跟着变，不需要同步任何文案。
+         * 注意它与 {@link #generateInWorld()} 不是一回事：荧石母岩开着世界生成，却没有自己的
+         * feature（它走原版荧石团的底部替换），所以这里是 null。
+         */
+        @Nullable WorldGen worldGen,
         /** 是否只在 AE2 存在时注册（仅福鲁伊克斯母岩） */
         boolean ae2Gated,
         /** 母岩被打碎时掉落什么（数据生成用：比母岩低一档的方块） */
@@ -106,6 +115,23 @@ public record BuddingFamily(
     public enum BuddingModel {
         CUBE_ALL,
         CUBE_COLUMN
+    }
+
+    /**
+     * 一个家族的世界生成 JSON 出处——都是本模组自己数据包里的文件名（不含 {@code .json}）：
+     * <ul>
+     *   <li>{@code feature}：{@code data/create_crystal_industry/worldgen/placed_feature/<feature>.json}，
+     *       里面写高度范围与每区块概率；</li>
+     *   <li>{@code biomeModifier}：{@code data/create_crystal_industry/neoforge/biome_modifier/<biomeModifier>.json}，
+     *       里面写这个 feature 加进哪些生物群系。</li>
+     * </ul>
+     * 两个名字都由 JEI 的信息页在运行时现读（见 {@code compat.jei.GenerationInfoReader}）。
+     */
+    public record WorldGen(String feature, String biomeModifier) {
+
+        public static WorldGen of(String feature, String biomeModifier) {
+            return new WorldGen(feature, biomeModifier);
+        }
     }
 
     public enum ToolTier {

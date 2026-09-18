@@ -79,6 +79,17 @@
 
 所有机器均提供 Create 风格的护目镜信息面板（生长状态、工作速度、生长倍率）与 **Ponder 教学场景**。
 
+**JEI 里的「母岩信息」页**：一块母岩一页——左边是母岩（晶簇长在它的顶面上，方块垫在 Create 自己那块 JEI
+阴影贴图上）、晶簇的产物摆在左上角栏位里
+（栏位右侧一支 Create 同款的箭头，箭头与阴影都取自 Create 的 JEI 贴图 `gui/jei/widgets.png`），
+右边写明 **生长条件 / 生长速度 / 生成条件**
+（生长速度只讲自然生长：每随机刻的概率与档位、按当前 randomTickSpeed 平均多少秒推进一级；
+生成条件含生物群系、高度范围、每区块概率与配置开关）。
+母岩、各级芽/晶簇与**晶簇产物**都能反查：在 JEI 里对着它们按 R 或 U 都会翻到这一页。
+生成条件与晶簇产物都是**运行时读模组自己的 JSON**（世界生成 / 掉落表）得来的，改了 JSON、重新构建后页面就跟着变，
+不会和实际生成漂移（客户端看不到数据包里的 `data/`，所以整合包覆盖同名文件时页面不跟着变）；
+KubeJS 脚本注册的母岩与其它模组登记在 `#c:budding_blocks` 的母岩也会自动出现在这一页里。
+
 ---
 
 ## 加自己的母岩（KubeJS）
@@ -95,6 +106,7 @@ StartupEvents.registry('block', event => {
 生成的方块：`kubejs:example_crystal_budding` 以及 `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`；
 母岩的随机刻已经接到生长引擎上，芽/簇自带 `FACING` 属性（朝母岩的方向长）。
 `id` 可以带命名空间（`'mypack:example_crystal'`），不带就落在 `kubejs` 命名空间。
+整族五个方块还会**自动出现在 JEI 的「母岩信息」页**里——概率、光照、含水要求都照实列出，不需要额外声明。
 
 ### 完整示例（复制即用）
 
@@ -204,6 +216,17 @@ BuddingRegistration.declareKnownId("my_budding");           // 让配置文件�
 `declareBuddingBlock` 不是可有可无的礼貌调用：区块从 NBT 恢复方块实体时会校验
 `BlockEntityType#isValid`（`LevelChunk:392`），不在共享 BE 合法方块表里的方块，
 其方块实体会在**区块重载后被丢弃**（护目镜随即失效）。
+
+用了 `GenericBuddingBlock` 的方块到上面两步就齐了：它自带家族定义，JEI 的母岩信息页能直接读出参数。
+**自己拼低阶接口**（自己实现 `randomTick` 调引擎）的方块没有定义可读，再补一次声明即可：
+
+```java
+// 3) 让 JEI 的「母岩信息」页也能列出它的概率 / 光照 / 含水要求
+BuddingRegistration.declareGrowthDefinition(myBudding.get(),
+        () -> GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
+```
+
+定义用 `Supplier` 惰性取，所以方块与阶段方块都还没建出来时调用也安全（脚本注册时正是如此）。
 
 **KubeJS（整合包作者，不写 Java）**
 

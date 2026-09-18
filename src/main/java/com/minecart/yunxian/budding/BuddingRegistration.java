@@ -1,9 +1,14 @@
 package com.minecart.yunxian.budding;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
+
+import org.jetbrains.annotations.Nullable;
 
 import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.budding.BuddingFamily.BlockEntityKind;
@@ -35,6 +40,11 @@ public final class BuddingRegistration {
     private static final Set<ResourceLocation> DECLARED_BLOCK_IDS = new LinkedHashSet<>();
     /** 外部声明的家族 id：让配置文件的四档能列出它们 */
     private static final Set<String> DECLARED_IDS = new LinkedHashSet<>();
+    /** 外部声明的生长定义（按方块）：自己实现 randomTick 的方块靠它让 JEI 信息页也能读到参数 */
+    private static final Map<Block, Supplier<GrowthDefinition>> DECLARED_DEFINITIONS = new LinkedHashMap<>();
+    /** 同上，但按方块 id 声明；首次查询时解析成上面的那张表 */
+    private static final Map<ResourceLocation, Supplier<GrowthDefinition>> DECLARED_DEFINITION_IDS =
+            new LinkedHashMap<>();
 
     /**
      * 声明一个母岩方块：它会被加进本模组的共享护目镜方块实体。
@@ -70,6 +80,50 @@ public final class BuddingRegistration {
     /** 外部声明的家族 id；配置校验用它补全"已知 id"集合 */
     public static Set<String> declaredIds() {
         return Set.copyOf(DECLARED_IDS);
+    }
+
+    /**
+     * 声明一个母岩的生长定义——<b>只有自己实现 randomTick 的方块需要它</b>。
+     * <p>
+     * 用 {@code GenericBuddingBlock} 建的方块自带 {@code BuddingFamily}、KubeJS 的
+     * {@code CustomBudding.create} 建的方块自带 {@code GrowthDefinition}，它们的信息页是天然的；
+     * 而"自己拼低阶接口"的方块（见 README 的「低阶接口」）两者都没有，JEI 的母岩信息页
+     * 与任何想读参数的地方就只能显示"规则未知"。声明一次，页面就能把概率/光照/含水原样列出来。
+     * <pre>{@code
+     * BuddingRegistration.declareGrowthDefinition(MY_BUDDING.get(),
+     *         () -> GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
+     * }</pre>
+     * 定义用 {@link Supplier} 惰性取：方块与阶段方块可能都还没建出来（脚本注册时尤其如此），
+     * 真正读它的时机（JEI 建页）在注册表冻结之后。
+     */
+    public static void declareGrowthDefinition(Block block, Supplier<GrowthDefinition> definition) {
+        DECLARED_DEFINITIONS.put(block, definition);
+    }
+
+    /**
+     * 同上，但用方块 id 声明——给"脚本注册、拿不到方块对象"的场景用。
+     * 解析推迟到 {@link #declaredDefinition(Block)} 首次查询时。
+     */
+    public static void declareGrowthDefinition(ResourceLocation blockId, Supplier<GrowthDefinition> definition) {
+        DECLARED_DEFINITION_IDS.put(blockId, definition);
+    }
+
+    /**
+     * 查询某方块声明过的生长定义；没声明过返回 {@code null}。
+     * <p>
+     * 按 id 声明的在这里解析成方块并<b>改挂到方块键上</b>，所以每个方块最多查一次注册表。
+     */
+    @Nullable
+    public static GrowthDefinition declaredDefinition(Block block) {
+        Supplier<GrowthDefinition> definition = DECLARED_DEFINITIONS.get(block);
+        if (definition == null) {
+            definition = DECLARED_DEFINITION_IDS.get(BuiltInRegistries.BLOCK.getKey(block));
+            if (definition == null) {
+                return null;
+            }
+            DECLARED_DEFINITIONS.put(block, definition);
+        }
+        return definition.get();
     }
 
     /**

@@ -21,6 +21,7 @@ import com.minecart.yunxian.budding.BuddingFamily.GrowthRule;
 import com.minecart.yunxian.budding.BuddingFamily.LightRequirement;
 import com.minecart.yunxian.budding.BuddingFamily.Replacement;
 import com.minecart.yunxian.budding.BuddingFamily.ToolTier;
+import com.minecart.yunxian.budding.BuddingFamily.WorldGen;
 import com.minecart.yunxian.registry.ModBlocks;
 import com.minecart.yunxian.registry.ModItems;
 import com.minecart.yunxian.registry.ModTags;
@@ -168,7 +169,7 @@ public final class BuddingFamilies {
     /** 普通母岩：只有通用生长，没有转化与额外要求 */
     private static RegisteredFamily plain(String id, BuddingModel model, ToolTier tier,
                                           Supplier<? extends ItemLike> drop) {
-        return register(new BuddingFamily(id, model, tier, false, false, drop, PLAIN_GROWTH, PLAIN_APPEARANCE));
+        return register(new BuddingFamily(id, model, tier, false, null, false, drop, PLAIN_GROWTH, PLAIN_APPEARANCE));
     }
 
     /**
@@ -187,8 +188,11 @@ public final class BuddingFamilies {
 
         Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
-        return register(new BuddingFamily(id, BuddingModel.CUBE_ALL, tier, true, false, veinBlock,
-                growth, PLAIN_APPEARANCE));
+        // 矿石族的 placed_feature 一律是 <id>_budding_vein，生物群系统一来自 ore_budding_veins
+        // （见 data/create_crystal_industry 下的 worldgen/placed_feature 与 neoforge/biome_modifier）
+        return register(new BuddingFamily(id, BuddingModel.CUBE_ALL, tier, true,
+                WorldGen.of(id + "_budding_vein", "ore_budding_veins"), false,
+                veinBlock, growth, PLAIN_APPEARANCE));
     }
 
     /** 回响母岩：要求生长位完全无光，并把周围可转化方块变成幽匿 */
@@ -204,7 +208,8 @@ public final class BuddingFamilies {
         Appearance appearance = new Appearance(
                 List.of(DARK_LIGHT, DARK_LIGHT, DARK_LIGHT), DARK_LIGHT, null,
                 BlockEntityKind.ECHO_DISPLAY, 0, null, null, List.of());
-        return register(new BuddingFamily("echo", BuddingModel.CUBE_ALL, ToolTier.DIAMOND, true, false,
+        return register(new BuddingFamily("echo", BuddingModel.CUBE_ALL, ToolTier.DIAMOND, true,
+                WorldGen.of("echo_budding_in_sculk", "echo_budding_in_deep_dark"), false,
                 () -> Blocks.SCULK, growth, appearance));
     }
 
@@ -217,7 +222,8 @@ public final class BuddingFamilies {
 
         Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.STANDARD, 0);
-        return register(new BuddingFamily("quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE, true, false,
+        return register(new BuddingFamily("quartz", BuddingModel.CUBE_COLUMN, ToolTier.STONE, true,
+                WorldGen.of("quartz_budding_vein", "quartz_budding_vein"), false,
                 () -> Blocks.SMOOTH_QUARTZ, growth, PLAIN_APPEARANCE));
     }
 
@@ -231,7 +237,8 @@ public final class BuddingFamilies {
 
         Growth growth = new Growth(GrowthRule.STANDARD, LightRequirement.ANY,
                 EnergyRequirement.FREE, conversions, ClusterKind.REDSTONE, REDSTONE_BUDDING_SIGNAL);
-        return register(new BuddingFamily("redstone", BuddingModel.CUBE_ALL, ToolTier.IRON, true, false,
+        return register(new BuddingFamily("redstone", BuddingModel.CUBE_ALL, ToolTier.IRON, true,
+                WorldGen.of("redstone_budding_vein", "ore_budding_veins"), false,
                 () -> Blocks.REDSTONE_BLOCK, growth, PLAIN_APPEARANCE));
     }
 
@@ -239,7 +246,9 @@ public final class BuddingFamilies {
     private static RegisteredFamily glowstone() {
         Appearance appearance = new Appearance(GLOWSTONE_BUD_LIGHT, GLOWSTONE_CLUSTER_LIGHT, null,
                 BlockEntityKind.SHARED_GROWTH, GLOWSTONE_BUDDING_LIGHT, null, null, List.of());
-        return register(new BuddingFamily("glowstone", BuddingModel.CUBE_ALL, ToolTier.NONE, true, false,
+        // 世界生成没有自己的 placed_feature：它替换的是原版荧石团（create_crystal_industry:glowstone_budding_blob
+        // 覆写了 minecraft:glowstone_extra），所以这里传 null，页面改用语言文件里的手写说明
+        return register(new BuddingFamily("glowstone", BuddingModel.CUBE_ALL, ToolTier.NONE, true, null, false,
                 () -> Blocks.GLOWSTONE, PLAIN_GROWTH, appearance));
     }
 
@@ -250,7 +259,8 @@ public final class BuddingFamilies {
         Appearance appearance = new Appearance(INHERIT_BUD_LIGHT, null, SoundType.GLASS,
                 BlockEntityKind.ICE_DISPLAY, 0, SoundType.GLASS, ICE_FRICTION,
                 List.of(() -> ModBlocks.FLAMMABLE_ICE_BLOCK.get(), () -> ModItems.FLAMMABLE_ICE.get()));
-        return register(new BuddingFamily("flammable_ice", BuddingModel.CUBE_ALL, ToolTier.NONE, true, false,
+        return register(new BuddingFamily("flammable_ice", BuddingModel.CUBE_ALL, ToolTier.NONE, true,
+                WorldGen.of("flammable_ice", "add_flammable_ice"), false,
                 () -> ModBlocks.FLAMMABLE_ICE_BLOCK.get(), growth, appearance));
     }
 
@@ -264,7 +274,7 @@ public final class BuddingFamilies {
                 EnergyRequirement.AE2_GRID, conversions, ClusterKind.STANDARD, 0);
         Appearance appearance = new Appearance(INHERIT_BUD_LIGHT, null, null,
                 BlockEntityKind.AE2_GRID, 0, null, null, List.of());
-        return register(new BuddingFamily("fluix", BuddingModel.CUBE_ALL, ToolTier.STONE, false, true,
+        return register(new BuddingFamily("fluix", BuddingModel.CUBE_ALL, ToolTier.STONE, false, null, true,
                 () -> externalBlock("ae2:fluix_block"), growth, appearance));
     }
 

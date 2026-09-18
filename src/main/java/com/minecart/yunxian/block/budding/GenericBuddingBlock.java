@@ -88,6 +88,16 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
         return family;
     }
 
+    /**
+     * 四个生长阶段的方块，顺序：小芽 → 中芽 → 大芽 → 晶簇（与 {@link GrowthDefinition#stages()} 一致）。
+     * <p>
+     * 供外部读取本方块会往哪四个方块长——附属模组用本类建自己的母岩时，
+     * JEI 的母岩信息页就是靠它渲染出整套芽与晶簇的（我们拿不到对方私有的四个字段）。
+     */
+    public List<Block> stages() {
+        return List.of(smallBud, mediumBud, largeBud, cluster);
+    }
+
     // 纯展示用 BE：不 tick、不存数据，仅支撑护目镜信息。
     @Nullable
     @Override

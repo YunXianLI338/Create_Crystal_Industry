@@ -79,6 +79,19 @@ Modpack authors can also add budding blocks of their own with **KubeJS**, as man
 
 Every machine ships with a Create-style Goggles info panel (growth status, work speed, growth multiplier) and **Ponder scenes**.
 
+**The "Budding Block Info" page in JEI**: one page per budding block — the budding block on the left with its cluster
+growing on top of it (sitting on Create's own JEI shadow sprite), the cluster's product in a slot at the top left
+(with Create's own arrow beside it — both the shadow and the arrow come from Create's `gui/jei/widgets.png`), and
+**Growth Conditions / Growth Speed / World Generation** spelled out on the right (growth
+speed covers natural growth only: the per-random-tick chance and its config tier, and the average seconds per stage at
+the current randomTickSpeed; world generation lists biomes, height range, per-chunk chance and config switches).
+The budding block, its buds/cluster and the cluster's product are all look-up-able: pressing R or U on any of them
+in JEI leads to this page.
+The world-generation facts and the cluster's product are **read from the mod's own JSON at runtime** (worldgen /
+loot tables), so editing that JSON and rebuilding updates the page instead of drifting from reality — note that a
+client cannot see `data/` from datapacks, so a datapack overriding those files does not change the page. Budding blocks
+registered by KubeJS scripts, and those other mods list in `#c:budding_blocks`, show up here automatically too.
+
 ---
 
 ## Adding Your Own Budding Blocks (KubeJS)
@@ -97,6 +110,8 @@ That produces `kubejs:example_crystal_budding` plus `_small_bud` / `_medium_bud`
 the budding block's random ticks are already wired to the growth engine, and the buds/cluster carry the `FACING`
 property (so they grow pointing at the budding block). The `id` may include a namespace
 (`'mypack:example_crystal'`); without one it lands in the `kubejs` namespace.
+All five blocks also **show up in JEI's "Budding Block Info" page automatically** — the chance, light and water
+requirements are listed as they are, with no extra declaration needed.
 
 ### Complete example (copy & run)
 
@@ -211,6 +226,19 @@ BuddingRegistration.declareKnownId("my_budding");           // let the config ti
 `declareBuddingBlock` is not optional politeness: restoring a block entity from chunk NBT validates
 `BlockEntityType#isValid` (`LevelChunk:392`), so a block missing from the shared BE's block list has
 its **block entity dropped on chunk reload** — the Goggles info silently stops working.
+
+Blocks built on `GenericBuddingBlock` are done after those two steps: they carry a family definition,
+so JEI's Budding Block Info page can read their parameters straight away. A block written against the
+**low-level API** (your own `randomTick` calling the engine) has no definition to read, so declare one:
+
+```java
+// 3) Let JEI's "Budding Block Info" page list its chance / light / water requirements
+BuddingRegistration.declareGrowthDefinition(myBudding.get(),
+        () -> GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
+```
+
+The definition is a `Supplier`, so calling this before the stage blocks exist is safe (which is exactly
+the case for script registration).
 
 **KubeJS (modpack authors, no Java)**
 

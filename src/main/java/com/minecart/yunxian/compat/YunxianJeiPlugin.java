@@ -1,7 +1,12 @@
 package com.minecart.yunxian.compat;
 
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.budding.BuddingFamilies;
+import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.client.echo.EchoSpyglassFilterScreen;
+import com.minecart.yunxian.compat.jei.BuddingInfo;
+import com.minecart.yunxian.compat.jei.BuddingInfoCategory;
+import com.minecart.yunxian.compat.jei.BuddingInfoCollector;
 import com.minecart.yunxian.item.EchoSpyglassItem;
 import com.minecart.yunxian.network.SetFilterPayload;
 import com.mojang.logging.LogUtils;
@@ -11,10 +16,17 @@ import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
+import mezz.jei.api.registration.IRecipeCatalystRegistration;
+import mezz.jei.api.registration.IRecipeCategoryRegistration;
+import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
 
@@ -32,6 +44,62 @@ public class YunxianJeiPlugin implements IModPlugin {
     @Override
     public ResourceLocation getPluginUid() {
         return UID;
+    }
+
+    // ==================== 母岩信息页 ====================
+
+    @Override
+    public void registerCategories(IRecipeCategoryRegistration registration) {
+        registration.addRecipeCategories(new BuddingInfoCategory(registration.getJeiHelpers().getGuiHelper()));
+    }
+
+    /**
+     * 每次 JEI 重载配方（进世界、数据包重载）都会重新收集一遍——生成条件正是从数据包里的世界生成 JSON
+     * 现读的，所以不缓存，改了 JSON 页面立刻跟着变。
+     */
+    @Override
+    public void registerRecipes(IRecipeRegistration registration) {
+        List<BuddingInfo> infos;
+        try {
+            infos = BuddingInfoCollector.collect();
+        } catch (RuntimeException e) {
+            // 收集失败不该让整个 JEI 配方加载挂掉：宁可这一页空着，也别把报错丢进别人的模组列表里
+            LOGGER.error("[Yunxian] 收集母岩信息失败，JEI 的母岩信息页将为空", e);
+            return;
+        }
+        LOGGER.info("[Yunxian] 注册 JEI 母岩信息页：{} 条", infos.size());
+        registration.addRecipes(BuddingInfoCategory.TYPE, infos);
+    }
+
+    /**
+     * 母岩与晶簇本体当催化剂，玩家在 JEI 里对着它们按 R/U 就能翻到信息页。
+     * <p>
+     * 只登记自带家族与原版母岩：脚本/外来母岩的物品已经由信息页里的"不可见材料"覆盖了检索，
+     * 而这里要遍历的 {@code BuddingFamilies} 是纯静态数据，不必为此重跑一遍信息收集。
+     */
+    @Override
+    public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
+        List<ItemStack> catalysts = new ArrayList<>();
+        for (RegisteredFamily family : BuddingFamilies.ALL) {
+            if (!family.isRegistered()) {
+                continue;
+            }
+            addCatalyst(catalysts, family.budding().get());
+            addCatalyst(catalysts, family.cluster().get());
+        }
+        addCatalyst(catalysts, Blocks.BUDDING_AMETHYST);
+
+        if (!catalysts.isEmpty()) {
+            registration.addRecipeCatalysts(BuddingInfoCategory.TYPE, catalysts.toArray(ItemStack[]::new));
+        }
+    }
+
+    /** 方块没有物品时跳过（空 ItemStack 会让 JEI 报错） */
+    private static void addCatalyst(List<ItemStack> catalysts, Block block) {
+        Item item = block.asItem();
+        if (item != Items.AIR) {
+            catalysts.add(item.getDefaultInstance());
+        }
     }
 
     @Override

@@ -88,6 +88,17 @@ public final class BuddingGrowthHelper {
         return perSecond;
     }
 
+    /**
+     * 按当前的 randomTickSpeed，一块母岩平均需要多少秒推进一级。
+     * <p>
+     * 每次随机刻有 1/chance 的概率推进一级，而随机刻平均每 1/自然速率 秒才落到这一格一次，
+     * 因此数学期望 = chance ÷ 自然速率（默认设置下 1/5 档约为 341 秒，与原版紫水晶母岩同速）。
+     * JEI 的母岩信息页要显示这个直观数字；{@code level} 为 null（还没进世界）时沿用默认基准。
+     */
+    public static double averageSecondsPerStage(@Nullable Level level, int chance) {
+        return chance / naturalRandomTicksPerSecond(level);
+    }
+
     /** 向护目镜浮窗追加“当前生长速度”行 */
     public static void appendGrowthTooltip(Level level, BlockPos pos, List<Component> tooltip) {
         if (level == null)
