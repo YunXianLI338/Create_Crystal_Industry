@@ -119,6 +119,46 @@ const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 - **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块都进 `#minecraft:mineable/pickaxe`——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
 - 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
 
+### 完整示例（复制即用）
+
+把下面这段丢进 `kubejs/startup_scripts/`（文件名随意，`.js` 即可）就完事——零贴图、零资源包，
+母岩与芽/簇默认借用原版紫水晶那一套贴图：
+
+```js
+// kubejs/startup_scripts/my_crystal.js
+StartupEvents.registry('block', event => {
+  const opts = new CustomBuddingOptions()
+  opts.chance = 20                        // 每次随机刻有 1/20 的概率往上长一级（默认 5）
+  opts.maxLight = 7                       // 生长位亮度上限 0–15；负数 = 不限（默认 -1）
+  opts.requiresWater = false              // true = 可燃冰式，目标格必须是水源（默认 false）
+  opts.displayName = '示例母岩'            // 不写就交给 KubeJS 按 id 自动命名（芽/簇同理）
+  opts.dropItem = 'minecraft:amethyst_shard'   // 晶簇普通破坏时掉什么；null = 什么都不掉（默认）
+  opts.dropCount = 2                      // 掉落数量，默认 1
+  opts.group = 'building_blocks'          // 创造栏：默认 'kubejs'，null = 不进任何页（只能 /give）
+
+  // 一行注册整族：母岩 + 小芽 + 中芽 + 大芽 + 晶簇
+  const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
+
+  // family 里是五个方块 id，接着写配方 / 标签 / 掉落表都行
+})
+```
+
+只要概率、其余全默认的话，一行就够：
+
+```js
+StartupEvents.registry('block', event => {
+  CustomBudding.create(event, 'example_crystal', 20)
+})
+```
+
+要自己的外观就补两行贴图（不写则四个阶段与母岩都用原版紫水晶的贴图）：
+
+```js
+opts.buddingTexture = 'mypack:block/my_crystal'
+opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
+                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
+```
+
 ### 已知限制
 
 - 不进配置文件里的四档（概率由脚本里的 `chance` 决定）；自发光、红石信号这类**烘焙在方块属性里**的东西也不可配
@@ -139,7 +179,8 @@ event.create('my_budding').randomTick(ctx => {
 })
 ```
 
-可跑的完整示例：`run/kubejs/startup_scripts/custom_budding_example.js`。
+可跑的完整示例见上一节的「完整示例（复制即用）」；本地开发目录里另有一份
+`run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
 
 ---
 
@@ -190,7 +231,8 @@ BuddingRegistration.declareKnownId("my_budding");           // 让配置文件�
 见上一节「加自己的母岩（KubeJS）」：装机后脚本里一行 `CustomBudding.create(event, 'my_crystal', 20)`
 就注册出整族五个方块（本模组的 KubeJS 插件提供的绑定）；
 要自己拼低阶方块时可用 `GrowthDefinition.of(小芽, 中芽, 大芽, 晶簇, n)` + 引擎。
-可跑的完整示例在 `run/kubejs/startup_scripts/custom_budding_example.js`。
+可跑的完整示例见「加自己的母岩（KubeJS）」一节；本地开发目录里另有一份
+`run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
 
 **引擎的两种调用形态**
 

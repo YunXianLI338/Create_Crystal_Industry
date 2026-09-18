@@ -124,6 +124,46 @@ const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 - **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join `#minecraft:mineable/pickaxe` — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
 - Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
 
+### Complete example (copy & run)
+
+Drop this into `kubejs/startup_scripts/` (any file name, as long as it ends in `.js`) and you're done — no
+textures, no resource pack: the budding block and its buds/cluster use vanilla amethyst's textures by default.
+
+```js
+// kubejs/startup_scripts/my_crystal.js
+StartupEvents.registry('block', event => {
+  const opts = new CustomBuddingOptions()
+  opts.chance = 20                        // 1-in-20 per random tick to advance one stage (default 5)
+  opts.maxLight = 7                       // light limit for the growth spot, 0-15; negative = unlimited (default -1)
+  opts.requiresWater = false              // true = flammable-ice style, the target block must be water (default false)
+  opts.displayName = 'Example Budding Block'   // omit to let KubeJS name it from the id (same for buds/cluster)
+  opts.dropItem = 'minecraft:amethyst_shard'   // dropped by the cluster on a normal break; null = nothing (default)
+  opts.dropCount = 2                      // how many of it, default 1
+  opts.group = 'building_blocks'          // creative tab: 'kubejs' by default; null = no tab at all (only /give)
+
+  // one line registers the whole family: budding block + small/medium/large bud + cluster
+  const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
+
+  // family holds the five block ids, ready for recipes / tags / loot tables
+})
+```
+
+Just the chance, everything else left at its default:
+
+```js
+StartupEvents.registry('block', event => {
+  CustomBudding.create(event, 'example_crystal', 20)
+})
+```
+
+For your own art, add two lines (without them the budding block and all four stages use vanilla amethyst textures):
+
+```js
+opts.buddingTexture = 'mypack:block/my_crystal'
+opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
+                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
+```
+
 ### Known limitations
 
 - They **do not appear in the config tiers** (the chance comes from your script), and baked-in block properties such as light emission or a redstone signal are not configurable either (for those, use the addon-mod route — see the Development section).
@@ -143,7 +183,8 @@ event.create('my_budding').randomTick(ctx => {
 })
 ```
 
-A complete, runnable example ships at `run/kubejs/startup_scripts/custom_budding_example.js`.
+See the complete example in the previous section; a local dev copy lives at
+`run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
 
 ---
 
@@ -197,7 +238,8 @@ See "Adding Your Own Budding Blocks (KubeJS)" above: with KubeJS installed, one 
 `CustomBudding.create(event, 'my_crystal', 20)` — registers the whole five-block family (the binding comes from
 this mod's KubeJS plugin). For hand-rolled blocks, use
 `GrowthDefinition.of(small, medium, large, cluster, n)` plus the engine.
-A complete, runnable example ships at `run/kubejs/startup_scripts/custom_budding_example.js`.
+See the complete example in the "Adding Your Own Budding Blocks (KubeJS)" section; a local dev copy lives at
+`run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
 
 **The two ways to call the engine**
 
