@@ -15,6 +15,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(Yunxian.MODID)
 public class Yunxian {
@@ -34,6 +35,10 @@ public class Yunxian {
         ModBlockEntities.register(modEventBus);
         ModCapabilities.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
+        // 脚本（KubeJS）注册的方块要进创造栏：KubeJS 的方块默认不进任何标签页，这里补上
+        modEventBus.addListener(ModCreativeTabs::addScriptedEntries);
+        // 脚本注册的芽/簇的掉落规则（精准采集掉本体、否则掉配置物品）：KubeJS 的掉落 API 表达不了，运行时接管
+        NeoForge.EVENT_BUS.addListener(ScriptedBlockDrops::onBlockDrops);
         modEventBus.addListener(Yunxian::commonSetup);
         ModRenderers.register(modEventBus);
         ModFeatures.register(modEventBus);

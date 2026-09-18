@@ -15,6 +15,15 @@ repositories {
     maven { url = "https://maven.createmod.net" }
     maven { url = "https://maven.ithundxr.dev/snapshots" }
     maven { name = "BlameJared"; url = uri("https://maven.blamejared.com/") }
+    // KubeJS 的可选联动依赖（CustomBudding 脚本绑定）只在这里发布
+    maven {
+        name = "Latvian"
+        url = "https://maven.latvian.dev/releases"
+        content {
+            includeGroup "dev.latvian.mods"
+            includeGroup "dev.latvian.apps"
+        }
+    }
     maven { name = "Illusive Soulworks"; url = "https://maven.theillusivec4.top/" }
     maven {
         name = "ParchmentMC"
@@ -130,6 +139,9 @@ dependencies {
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}:api"
     // AE2 可选联动：仅编译期需要；运行时由开发环境 run/mods 或玩家自行安装的 AE2 提供
     compileOnly "maven.modrinth:ae2:${ae2_version}"
+    // KubeJS 可选联动（脚本绑定 "CustomBudding"）：同样只编译期需要。
+    // 运行时由玩家自行安装的 KubeJS 提供：它读本模组 jar 里的 kubejs.plugins.txt 时才会加载插件类
+    compileOnly "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
 }
 
 // 这段代码会在指定的资源目标中展开所有已声明的替换属性。

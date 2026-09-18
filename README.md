@@ -62,6 +62,7 @@
 母岩按对应矿物的深度生成，通常**嵌在矿脉之中**（钻石母岩 -64~16、粗铁 -24~56、粗铜 -16~112、粗锌 -63~70、青金石 -64~64、红石 -63~15 等）。荧石母岩出现在天然荧石团底部，可燃冰母岩只生成在深海海床之下。
 
 **每一种生成都能在配置文件里单独开关**，可燃冰稀有度、荧石母岩替换概率与母岩生长速度档位同样可调。
+整合包作者还能用 **KubeJS** 加自己的母岩，数量不限（见下方「加自己的母岩（KubeJS）」）。
 
 > ⚠️ **自然生成的回响母岩被破坏时会召唤监守者**（你自己放置的不会）。
 
@@ -70,11 +71,78 @@
 ## 五、兼容性
 
 - **必需**：机械动力 Create 6.0.10+
-- **可选**：AE2（启用福鲁伊克斯母岩）、Curios（护目镜可装备于头盔槽）、JEI
+- **可选**：AE2（启用福鲁伊克斯母岩）、Curios（护目镜可装备于头盔槽）、JEI、KubeJS（用脚本加自己的母岩）
 - **未安装 AE2 时模组会正常启动**，只是不注册福鲁伊克斯相关内容
 - **AE2 的晶体催生器同样能加速本模组的母岩**（按它自己的配置间隔施加随机刻），护目镜的「生长速度」倍率会把它一并计入
 
 所有机器均提供 Create 风格的护目镜信息面板（生长状态、工作速度、生长倍率）与 **Ponder 教学场景**。
+
+---
+
+## 加自己的母岩（KubeJS）
+
+本模组的生长引擎是**公开**的，用 **KubeJS** 就能加自己的母岩，**数量不限**，不写 Java、也不需要数据包。
+更省事的是：**一行注册一整族**——母岩本体、小芽、中芽、大芽、晶簇五个方块一次全出来。
+
+```js
+StartupEvents.registry('block', event => {
+  CustomBudding.create(event, 'example_crystal', 20)   // 概率 1/20
+})
+```
+
+生成的方块：`kubejs:example_crystal_budding` 以及 `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`；
+母岩的随机刻已经接到生长引擎上，芽/簇自带 `FACING` 属性（朝母岩的方向长）。
+`id` 可以带命名空间（`'mypack:example_crystal'`），不带就落在 `kubejs` 命名空间。
+
+需要更多控制就用选项对象（选项在调用时读一次）：
+
+```js
+const opts = new CustomBuddingOptions()
+opts.chance = 20            // 每次随机刻 1/n
+opts.maxLight = 7           // 生长位亮度上限（负数 = 不限）
+opts.requiresWater = false  // true = 可燃冰式，目标格必须含水
+opts.displayName = '示例母岩'
+opts.dropItem = 'mypack:my_shard'      // 晶簇普通破坏时掉的物品（精准采集始终掉晶簇本体）
+opts.dropCount = 2                     // 掉落数量，默认 1
+opts.buddingTexture = 'mypack:block/my_crystal'        // 母岩贴图
+opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
+                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
+const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
+```
+
+- **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
+- 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
+  `opts.group` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），设成 `null` 就完全不进标签页、只能用 `/give` 取。
+- **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `opts.dropItem` × `opts.dropCount`（默认什么都不掉），精准采集掉本体——与本模组自带芽/簇的行为一致。
+- 返回值 `family` 里有五个方块 id（`family.budding` / `family.cluster` …），方便接着写配方、标签、掉落表。
+- **别忘了加标签**：把母岩加进 `#c:budding_blocks`，智能钻头的精准采集与 AE2 晶体催生器才认它
+  （`ServerEvents.tags('block', event => event.add('c:budding_blocks', 'kubejs:example_crystal_budding'))`）。
+- 掉落物走原版掉落表（`loot_table/blocks/...`），贴图与名字走资源包 / lang —— 都在你自己的命名空间下。
+
+### 已知限制
+
+- 这类母岩是 KubeJS 的方块，不是本模组的方块类，所以**没有护目镜的「生长速度」面板**，
+  也**不进配置文件里的四档**（概率由脚本里的 `chance` 决定）。
+- 芽/簇默认**不带碰撞箱**：KubeJS 的 `box(...)` 不随朝向旋转，侧向实例会错位，索性不设。
+  要精确形状就自己注册阶段方块，用下面的低阶接口把 `stages` 指过去。
+- 想要"护目镜 + 配置档位 + 精确形状"全都有的原生体验，那要走附属模组的 Java 路线（见开发一节）。
+
+### 低阶接口（自己拼定义）
+
+```js
+const BuddingGrowthEngine = Java.loadClass('com.minecart.yunxian.budding.BuddingGrowthEngine')
+const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDefinition')
+
+// 自己的方块 + 自己指定的四个阶段方块（原版紫水晶芽、本模组的芽/簇、你注册的方块都行）
+const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
+                                       'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
+
+event.create('my_budding').randomTick(ctx => {
+  BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
+})
+```
+
+可跑的完整示例：`run/kubejs/startup_scripts/custom_budding_example.js`。
 
 ---
 
@@ -96,6 +164,49 @@
 
 仍需手写的：材质（含 `.mcmeta`）、晶簇与福鲁伊克斯的掉落表（结构与模组条件无法由生成器
 等价复刻）、世界生成 JSON、语言文件。
+
+### 给附属模组与 KubeJS：把方块接进母岩引擎
+
+生长判定与放置是**公开**的（`budding/BuddingGrowthEngine`），三类调用方共用同一条代码路径：
+本模组自带的母岩、附属模组的方块、KubeJS 脚本注册的方块。引擎**不含**随机刻副作用（转化/传播）与
+生长能量——那两样由方块自己负责，能量通过 `GrowthGate` 在放置前回调。
+
+**附属模组（Java）**
+
+```java
+// 1) 自己的母岩方块：可直接用公开的 GenericBuddingBlock（传自己的芽/簇方块），
+//    也可以自己实现 randomTick 再调引擎
+DeferredBlock<Block> myBudding = MY_BLOCKS.register("my_budding",
+        () -> new GenericBuddingBlock(myFamilySpec, properties, small, medium, large, cluster));
+
+// 2) 在自己的 @Mod 构造器里声明（必须在方块注册事件之前）：
+BuddingRegistration.declareBuddingBlock(myBudding.get());   // 用共享护目镜 BE
+BuddingRegistration.declareKnownId("my_budding");           // 让配置文件四档能列出它
+```
+
+`declareBuddingBlock` 不是可有可无的礼貌调用：区块从 NBT 恢复方块实体时会校验
+`BlockEntityType#isValid`（`LevelChunk:392`），不在共享 BE 合法方块表里的方块，
+其方块实体会在**区块重载后被丢弃**（护目镜随即失效）。
+
+**KubeJS（整合包作者，不写 Java）**
+
+见上一节「加自己的母岩（KubeJS）」：装机后脚本里一行 `CustomBudding.create(event, 'my_crystal', 20)`
+就注册出整族五个方块（本模组的 KubeJS 插件提供的绑定）；
+要自己拼低阶方块时可用 `GrowthDefinition.of(小芽, 中芽, 大芽, 晶簇, n)` + 引擎。
+可跑的完整示例在 `run/kubejs/startup_scripts/custom_budding_example.js`。
+
+**引擎的两种调用形态**
+
+```java
+// 免费生长（脚本/附属模组最常用）
+BuddingGrowthEngine.tryGrow(level, pos, random, GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
+
+// 带付费钩子（本模组自带家族走这条：AE2 母岩在放置前扣能量）
+BuddingGrowthEngine.tryGrow(serverLevel, pos, random, definition, gate);
+```
+
+其余资源自备：方块的注册与贴图、物品、掉落表、以及把方块加进 `#c:budding_blocks`
+标签（智能钻头精准采集与 AE2 晶体催生器读它）。
 
 ---
 

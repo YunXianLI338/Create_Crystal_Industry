@@ -93,8 +93,9 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
 
             hasAnyValidSpot = true;
 
-            // 光照要求：该格亮度低于阈值（即 0）→ 当前即可生长
-            if (family.growth().light().allows(level, neighborPos))
+            // 光照要求：该格亮度低于阈值（即 0）→ 当前即可生长。
+            // 走父类的判定，光照门槛将来若改动，这里只会跟着一起变
+            if (canGrowAtLight(level, neighborPos))
                 return GrowthStatus.GROWABLE;
         }
 

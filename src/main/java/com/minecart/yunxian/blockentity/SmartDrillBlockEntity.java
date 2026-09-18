@@ -4,6 +4,7 @@ import com.minecart.yunxian.behaviour.SmartDrillFilterBehaviour;
 import com.minecart.yunxian.behaviour.SmartDrillValueBoxTransform;
 import com.minecart.yunxian.block.SmartDrillBlock;
 import com.minecart.yunxian.registry.ModBlockEntities;
+import com.minecart.yunxian.registry.ScriptedBlockDrops;
 import com.simibubi.create.content.kinetics.drill.DrillBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.INamedIconOptions;
@@ -12,6 +13,7 @@ import com.simibubi.create.foundation.utility.BlockHelper;
 import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.math.VecHelper;
 import net.minecraft.ChatFormatting;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
@@ -95,6 +97,18 @@ public class SmartDrillBlockEntity extends DrillBlockEntity {
     @Override
     public void onBlockBroken(BlockState stateToBreak) {
         if (filtering == null || filtering.getMode() == DrillMode.NORMAL) {
+            // 脚本（KubeJS）注册的方块按我们自己的掉落规则来，而不是原版掉落表
+            // （Create 的挖掘辅助自己算掉落，NeoForge 的 BlockDropsEvent 在那条路上不触发）
+            if (level != null && ScriptedBlockDrops.isScripted(stateToBreak.getBlock())) {
+                BlockPos target = breakingPos != null ? breakingPos : getBreakingPos();
+                level.destroyBlock(target, false);
+                for (ItemStack stack : ScriptedBlockDrops.dropsFor(stateToBreak, ItemStack.EMPTY)) {
+                    if (!stack.isEmpty()) {
+                        dropItem(target, stack);
+                    }
+                }
+                return;
+            }
             super.onBlockBroken(stateToBreak);
             return;
         }

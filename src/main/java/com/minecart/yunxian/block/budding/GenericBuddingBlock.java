@@ -2,6 +2,7 @@ package com.minecart.yunxian.block.budding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -11,7 +12,11 @@ import com.minecart.yunxian.blockentity.budding.FlammableIceBuddingBlockEntity;
 import com.minecart.yunxian.budding.BuddingFamily;
 import com.minecart.yunxian.budding.BuddingFamily.BlockConversion;
 import com.minecart.yunxian.budding.BuddingFamily.EnergyRequirement;
+import com.minecart.yunxian.budding.BuddingFamily.GrowthRule;
+import com.minecart.yunxian.budding.BuddingFamily.LightRequirement;
 import com.minecart.yunxian.budding.BuddingFamily.Replacement;
+import com.minecart.yunxian.budding.BuddingGrowthEngine;
+import com.minecart.yunxian.budding.GrowthDefinition;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.integration.ae2.AE2Budding;
 import com.minecart.yunxian.registry.ModBlockEntities;
@@ -22,7 +27,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.AmethystClusterBlock;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BuddingAmethystBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -30,15 +35,17 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Fluids;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 所有母岩的生长引擎：行为完全由构造时传入的 {@link BuddingFamily} 决定，
- * 不再靠子类覆写。各家族的全部差异（光照门槛、含水要求、充能要求、方块转化、
- * 芽/簇方块、方块实体）都写在 {@code budding/BuddingFamilies} 那一张表里。
+ * 母岩方块：把家族定义合成一个 {@link GrowthDefinition}，
+ * 生长本身交给公开的 {@link BuddingGrowthEngine}（附属模组与 KubeJS 脚本用的是同一个入口）。
+ * <p>
+ * 各家族的全部差异（光照门槛、含水要求、充能要求、方块转化、芽/簇方块、方块实体）
+ * 都写在 {@code budding/BuddingFamilies} 那一张表里，本类不含任何家族特例；
+ * 随机刻副作用（转化/传播）与生长能量留在本类，因为它们是家族特有的。
  * <p>
  * 唯一保留的子类是 {@link EchoConvertingBuddingBlock}：它的 {@code CAN_SUMMON} 状态
  * 必须在构造器里注册，而 {@code BlockBehaviour} 的构造器会先调用
@@ -47,17 +54,24 @@ import org.slf4j.LoggerFactory;
 public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityBlock {
     private static final Logger LOGGER = LoggerFactory.getLogger("create_crystal_industry.budding");
 
-    private static final Direction[] DIRECTIONS = Direction.values();
-
     protected final BuddingFamily family;
     protected final Block smallBud;
     protected final Block mediumBud;
     protected final Block largeBud;
     protected final Block cluster;
 
+    /** 生长能量钩子：免费家族为 null（避免每次随机刻现建 lambda） */
+    @Nullable
+    private final BuddingGrowthEngine.GrowthGate energyGate;
+
     /** 转化规则在首次随机刻（注册表已冻结）后解析并缓存，避免每 tick 查注册表 */
     @Nullable
     private List<PreparedConversion> preparedConversions;
+
+    // 生长定义缓存：配置里的生长档位变了才重建
+    @Nullable
+    private GrowthDefinition cachedDefinition;
+    private int cachedChance;
 
     public GenericBuddingBlock(BuddingFamily family, Properties properties, Block smallBud, Block mediumBud,
                                Block largeBud, Block cluster) {
@@ -67,6 +81,7 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
         this.mediumBud = mediumBud;
         this.largeBud = largeBud;
         this.cluster = cluster;
+        this.energyGate = family.growth().energy() == EnergyRequirement.FREE ? null : this::payGrowthEnergy;
     }
 
     public BuddingFamily family() {
@@ -106,115 +121,47 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
 
     @Override
     public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        switch (family.growth().rule()) {
-            case STANDARD -> growStandard(level, pos, random);
-            case SUBMERGED -> growSubmerged(level, pos, random);
-        }
-
+        BuddingGrowthEngine.tryGrow(level, pos, random, definition(), energyGate);
         runConversions(level, pos, random);
     }
 
-    // ==================== 生长 ====================
+    // ==================== 生长定义 ====================
 
     /**
-     * 生长概率基数 n：每次随机刻有 1/n 的概率推进一级，档位（极慢/慢/正常/快）来自配置文件。
-     */
-    private int growthChance() {
-        return ModConfig.Common.growthChance(family.id());
-    }
-
-    /**
-     * 通用生长：母岩自身不在液体中，且 1/{@link #growthChance()} 判定通过时，
-     * 随机选一个面推进相邻晶簇一级（空位长新芽）。
+     * 本方块当前生效的生长定义：家族定义 + 配置文件里的生长档位。
      * <p>
-     * 注意随机数消耗顺序：液体检查在 {@code nextInt(growthChance)} 之前，
-     * 调换会改变生长速率。快档（n=1）时 {@code nextInt(1)} 恒为 0，但仍消耗一次随机数——
-     * 不为快档特判，各档的随机序列才一致。
+     * 按解析出的概率缓存（配置重载会改变它）：随机刻是热路径，不能每 tick 重建一个定义。
      */
-    private void growStandard(ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!level.getFluidState(pos).isEmpty() || random.nextInt(growthChance()) != 0) {
-            return;
+    private GrowthDefinition definition() {
+        int chance = ModConfig.Common.growthChance(family.id());
+
+        GrowthDefinition cached = cachedDefinition;
+        if (cached != null && cachedChance == chance) {
+            return cached;
         }
 
-        Direction side = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
-        BlockPos neighborPos = pos.relative(side);
+        GrowthDefinition built = new GrowthDefinition(smallBud, mediumBud, largeBud, cluster, chance,
+                familyMaxLight(), family.growth().rule() == GrowthRule.SUBMERGED);
+        cachedChance = chance;
+        cachedDefinition = built;
+        return built;
+    }
 
-        if (!canGrowAtLight(level, neighborPos)) {
-            return;
-        }
-
-        BlockState neighborState = level.getBlockState(neighborPos);
-        Block nextBlock = nextStage(neighborState, side, false);
-        if (nextBlock == null) {
-            return;
-        }
-
-        if (!payGrowthEnergy(level, pos)) {
-            return;
-        }
-
-        level.setBlockAndUpdate(neighborPos, nextBlock.defaultBlockState()
-                .setValue(AmethystClusterBlock.FACING, side)
-                .setValue(AmethystClusterBlock.WATERLOGGED,
-                        neighborState.getFluidState().getType() == Fluids.WATER));
+    /** 家族的光照要求换算成"允许的最大亮度"：{@code below(t)} 即亮度 ≤ t-1，不限光时为空 */
+    private OptionalInt familyMaxLight() {
+        LightRequirement light = family.growth().light();
+        return light.kind() == LightRequirement.Kind.BELOW
+                ? OptionalInt.of(light.threshold() - 1)
+                : OptionalInt.empty();
     }
 
     /**
-     * 水下生长（可燃冰）：长新芽与芽体进阶都要求目标格含水；
-     * 长新芽还额外要求那是水源方块（waterlogged 的芽/簇其流体状态即水，不受影响）。
+     * 生长位是否满足光照要求（默认无要求，回响母岩要求亮度 0）。
+     * <p>
+     * 客户端也会调它（回响母岩的护目镜状态），所以判定只依赖客户端也拿得到的东西：家族定义。
      */
-    private void growSubmerged(ServerLevel level, BlockPos pos, RandomSource random) {
-        if (random.nextInt(growthChance()) != 0) {
-            return;
-        }
-
-        Direction side = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
-        BlockPos neighborPos = pos.relative(side);
-        BlockState neighborState = level.getBlockState(neighborPos);
-
-        if (neighborState.getFluidState().getType() != Fluids.WATER) {
-            return;
-        }
-
-        Block nextBlock = nextStage(neighborState, side, true);
-        if (nextBlock == null) {
-            return;
-        }
-
-        if (!payGrowthEnergy(level, pos)) {
-            return;
-        }
-
-        level.setBlockAndUpdate(neighborPos, nextBlock.defaultBlockState()
-                .setValue(AmethystClusterBlock.FACING, side)
-                .setValue(AmethystClusterBlock.WATERLOGGED, true));
-    }
-
-    /**
-     * 相邻格决定的下一个阶段；无需变化时返回 null。
-     *
-     * @param submerged 水下生长：空位必须同时是水源才能长新芽
-     */
-    @Nullable
-    private Block nextStage(BlockState neighborState, Direction side, boolean submerged) {
-        if (submerged ? canGrowNewBud(neighborState) : canGrowAt(neighborState)) {
-            return smallBud;
-        }
-        if (neighborState.is(smallBud) && sameFacing(neighborState, side)) {
-            return mediumBud;
-        }
-        if (neighborState.is(mediumBud) && sameFacing(neighborState, side)) {
-            return largeBud;
-        }
-        if (neighborState.is(largeBud) && sameFacing(neighborState, side)) {
-            return cluster;
-        }
-        return null;
-    }
-
-    /** 生长位是否满足该家族的光照要求（默认无要求，回响母岩要求亮度 0） */
-    protected boolean canGrowAtLight(ServerLevel level, BlockPos neighborPos) {
-        return family.growth().light().allows(level, neighborPos);
+    protected boolean canGrowAtLight(Level level, BlockPos neighborPos) {
+        return BuddingGrowthEngine.lightAllows(level, neighborPos, definition());
     }
 
     /**
@@ -226,21 +173,6 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
             return true;
         }
         return AE2Budding.tryConsumeGrowthEnergy(level, pos);
-    }
-
-    private static boolean canGrowAt(BlockState state) {
-        return BuddingFamily.isFree(state);
-    }
-
-    /** 长新芽的条件：空位且为水源方块 */
-    private static boolean canGrowNewBud(BlockState state) {
-        return BuddingFamily.isFree(state)
-                && state.getFluidState().getType() == Fluids.WATER
-                && state.getFluidState().isSource();
-    }
-
-    private static boolean sameFacing(BlockState state, Direction side) {
-        return state.getValue(AmethystClusterBlock.FACING) == side;
     }
 
     // ==================== 随机刻副作用（转化/传播） ====================

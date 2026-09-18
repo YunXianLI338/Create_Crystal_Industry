@@ -6,8 +6,7 @@ import com.minecart.yunxian.blockentity.budding.BuddingGrowthBlockEntity;
 import com.minecart.yunxian.blockentity.budding.EchoConvertingBuddingBlockEntity;
 import com.minecart.yunxian.blockentity.budding.FlammableIceBuddingBlockEntity;
 import com.minecart.yunxian.budding.BuddingFamilies;
-import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
-import com.minecart.yunxian.budding.BuddingFamily.BlockEntityKind;
+import com.minecart.yunxian.budding.BuddingRegistration;
 import com.minecart.yunxian.integration.ae2.AE2BlockEntities;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -59,17 +58,12 @@ public final class ModBlockEntities {
                     EchoConvertingBuddingBlockEntity::new,
                     BuddingFamilies.ECHO.budding().get()
             ).build(null));
-    // 母岩共享的“生长速度”展示 BE：凡是没指定专用 BE 的家族都走这里，
-    // 名单直接由中央定义表派生（新增母岩无需改本文件）
+    // 母岩共享的“生长速度”展示 BE：凡是没指定专用 BE 的家族都走这里。
+    // 合法方块表由 BuddingRegistration 汇总（自带家族 + 附属模组声明的方块）
     public static final Supplier<BlockEntityType<BuddingGrowthBlockEntity>> BUDDING_GROWTH =
-            BLOCK_ENTITIES.register("budding_growth", () -> {
-                Block[] shared = BuddingFamilies.ALL.stream()
-                        .filter(RegisteredFamily::isRegistered)
-                        .filter(family -> family.spec().appearance().blockEntity() == BlockEntityKind.SHARED_GROWTH)
-                        .map(family -> family.budding().get())
-                        .toArray(Block[]::new);
-                return BlockEntityType.Builder.of(BuddingGrowthBlockEntity::new, shared).build(null);
-            });
+            BLOCK_ENTITIES.register("budding_growth", () -> BlockEntityType.Builder
+                    .of(BuddingGrowthBlockEntity::new, BuddingRegistration.sharedGogglesBlocks())
+                    .build(null));
 
     // ★ 软依赖：类型刻意写成 BlockEntityType<?>，避免 FluixBuddingBlockEntity
     // 出现在本常驻类的任何签名/描述符中（否则 JVM 校验时会去加载 AE2 类型而崩溃）。

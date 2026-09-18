@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.budding.BuddingFamily.GrowthSpeed;
+import com.minecart.yunxian.budding.BuddingRegistration;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.slf4j.Logger;
@@ -139,10 +141,28 @@ public final class ModConfig {
         // ===== 母岩生长速度（四档） =====
         private static final Logger LOGGER = LoggerFactory.getLogger("create_crystal_industry.config");
 
-        /** 全部已知的母岩家族 id；AE2 缺席时福鲁伊克斯母岩不存在，但配置里写了也不算错 */
-        private static final Set<String> KNOWN_BUDDING_IDS = BuddingFamilies.ALL.stream()
-                .map(family -> family.spec().id())
-                .collect(Collectors.toUnmodifiableSet());
+        /** {@link #knownBuddingIds()} 的缓存：只在首次使用时构建一次 */
+        private static Set<String> knownBuddingIds;
+
+        /**
+         * 全部已知的母岩 id：自带的 14 个家族 + 附属模组通过
+         * {@link BuddingRegistration#declareKnownId} 声明的 id。
+         * <p>
+         * <b>延迟到首次使用</b>（首个随机刻解析生长档位时）才构建：附属模组是在自己构造器里声明的，
+         * 而配置项本身在模组构造期就要建立，晚一点收集才收得全。
+         * AE2 缺席时福鲁伊克斯母岩不存在，但配置里写了也不算错。
+         */
+        private static Set<String> knownBuddingIds() {
+            Set<String> ids = knownBuddingIds;
+            if (ids == null) {
+                ids = Stream.concat(
+                                BuddingFamilies.ALL.stream().map(family -> family.spec().id()),
+                                BuddingRegistration.declaredIds().stream())
+                        .collect(Collectors.toUnmodifiableSet());
+                knownBuddingIds = ids;
+            }
+            return ids;
+        }
 
         /**
          * 四档生长速度各一个配置项，由 {@link GrowthSpeed} 派生：
@@ -241,7 +261,7 @@ public final class ModConfig {
 
         private static void assign(Map<String, GrowthSpeed> assignment, GrowthSpeed speed) {
             for (String id : speedList(speed)) {
-                if (!KNOWN_BUDDING_IDS.contains(id)) {
+                if (!knownBuddingIds().contains(id)) {
                     LOGGER.warn("[Config] {} 里的“{}”不是已知的母岩家族 id，已忽略", speed.configKey(), id);
                     continue;
                 }

@@ -62,6 +62,7 @@ Both accelerators' **acceleration interval** is configurable (`Acceleration Inte
 Budding blocks generate at the depths of the ore they correspond to, usually **embedded inside ore veins** (Budding Diamond -64~16, Budding Raw Iron -24~56, Budding Raw Copper -16~112, Budding Raw Zinc -63~70, Budding Lapis Lazuli -64~64, Budding Redstone -63~15, and so on). Budding Glowstone appears at the bottom of naturally generated glowstone blobs, and Budding Flammable Ice only generates on the seafloor of deep oceans.
 
 **Every one of these can be toggled individually in the config file**, along with Flammable Ice rarity, the Glowstone budding replacement chance and the budding growth speed tiers.
+Modpack authors can also add budding blocks of their own with **KubeJS**, as many as they like (see "Adding Your Own Budding Blocks (KubeJS)" below).
 
 > ⚠️ **Naturally generated Budding Echo summons a Warden when broken.** Ones you place yourself will not.
 
@@ -70,11 +71,87 @@ Budding blocks generate at the depths of the ore they correspond to, usually **e
 ## 5. Compatibility
 
 - **Required**: Create 6.0.10+
-- **Optional**: AE2 (enables Budding Fluix), Curios (goggles in the head slot), JEI
+- **Optional**: AE2 (enables Budding Fluix), Curios (goggles in the head slot), JEI, KubeJS (add your own budding blocks from a script)
 - **Without AE2 the mod starts normally** — it simply does not register the Fluix content
 - **AE2's Crystal Growth Accelerator also speeds up this mod's budding blocks** (it applies random ticks at its own configured interval); the Goggles growth multiplier counts it too
 
 Every machine ships with a Create-style Goggles info panel (growth status, work speed, growth multiplier) and **Ponder scenes**.
+
+---
+
+## Adding Your Own Budding Blocks (KubeJS)
+
+The growth engine is **public**: with **KubeJS** you can add budding blocks of your own — **as many as you like**,
+without writing Java and without a datapack. Even better, **one line registers the whole family** — the budding
+block, the small/medium/large buds and the cluster, five blocks at once.
+
+```js
+StartupEvents.registry('block', event => {
+  CustomBudding.create(event, 'example_crystal', 20)   // 1-in-20 chance
+})
+```
+
+That produces `kubejs:example_crystal_budding` plus `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`;
+the budding block's random ticks are already wired to the growth engine, and the buds/cluster carry the `FACING`
+property (so they grow pointing at the budding block). The `id` may include a namespace
+(`'mypack:example_crystal'`); without one it lands in the `kubejs` namespace.
+
+For more control, pass an options object (read once, at call time):
+
+```js
+const opts = new CustomBuddingOptions()
+opts.chance = 20            // 1-in-n per random tick
+opts.maxLight = 7           // light limit for the growth spot (negative = unlimited)
+opts.requiresWater = false  // true = flammable-ice style, the target block must be water
+opts.displayName = 'Example Budding Block'
+opts.dropItem = 'mypack:my_shard'      // dropped by the cluster on a normal break (silk touch always drops the cluster itself)
+opts.dropCount = 2                     // how many of it, default 1
+opts.buddingTexture = 'mypack:block/my_crystal'        // budding block texture
+opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
+                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
+const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
+```
+
+- **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
+  ship a resource pack for your own art.
+- The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
+  otherwise, which makes it look like registration failed). `opts.group` can point at a vanilla tab
+  (`'building_blocks'`, …); set it to `null` to keep them out of every tab (then only `/give` gets them).
+- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); the cluster drops `opts.dropItem` × `opts.dropCount` (nothing by default) on a normal break, and itself with silk touch — same behaviour as this mod's own buds/cluster.
+- The returned `family` holds the five block ids (`family.budding`, `family.cluster`, …) so you can keep going with
+  recipes, tags and loot tables.
+- **Don't forget the tag**: add the budding block to `#c:budding_blocks` or the Smart Drill's silk-touch harvest and
+  AE2's Crystal Growth Accelerator will not recognise it
+  (`ServerEvents.tags('block', event => event.add('c:budding_blocks', 'kubejs:example_crystal_budding'))`).
+- Drops use vanilla loot tables (`loot_table/blocks/...`); textures and names come from a resource pack / lang —
+  all in your own namespace.
+
+### Known limitations
+
+- These blocks are KubeJS blocks, not this mod's block class, so they have **no Goggles growth-speed panel** and
+  they **do not appear in the config tiers** (the chance comes from your script).
+- The buds/cluster ship **without a collision box**: KubeJS's `box(...)` does not rotate with the facing, so
+  side-facing instances would be misaligned. For exact shapes, register your own stage blocks and point the engine
+  at them with the low-level API below.
+- For the full native experience (Goggles panel, config tiers, exact shapes) use the addon-mod route
+  (see the Development section).
+
+### Low-level API (build the definition yourself)
+
+```js
+const BuddingGrowthEngine = Java.loadClass('com.minecart.yunxian.budding.BuddingGrowthEngine')
+const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDefinition')
+
+// your own block + whatever four stage blocks you like (vanilla buds, this mod's, your own)
+const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
+                                       'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
+
+event.create('my_budding').randomTick(ctx => {
+  BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
+})
+```
+
+A complete, runnable example ships at `run/kubejs/startup_scripts/custom_budding_example.js`.
 
 ---
 
@@ -97,6 +174,51 @@ the `c:budding_blocks` tags, and the `mineable/pickaxe` / `needs_*_tool` tags.
 
 Still hand-written: textures (and `.mcmeta`), the cluster and Fluix loot tables (their structure and
 mod conditions cannot be reproduced faithfully by the generator), world-gen JSON, and lang files.
+
+### For Addon Mods & KubeJS: Plugging a Block Into the Growth Engine
+
+The growth check and placement are **public** (`budding/BuddingGrowthEngine`), and three kinds of
+callers share one code path: this mod's own budding blocks, addon blocks, and KubeJS-registered blocks.
+The engine deliberately **excludes** random-tick side effects (conversion/spread) and growth energy —
+the block owns those, and energy is paid through a `GrowthGate` callback right before placement.
+
+**Addon mod (Java)**
+
+```java
+// 1) Your own budding block: either use the public GenericBuddingBlock (pass your own buds/cluster),
+//    or implement randomTick yourself and call the engine
+DeferredBlock<Block> myBudding = MY_BLOCKS.register("my_budding",
+        () -> new GenericBuddingBlock(myFamilySpec, properties, small, medium, large, cluster));
+
+// 2) Declare it in your @Mod constructor (must happen before the block registry event):
+BuddingRegistration.declareBuddingBlock(myBudding.get());   // use the shared Goggles BE
+BuddingRegistration.declareKnownId("my_budding");           // let the config tiers list it
+```
+
+`declareBuddingBlock` is not optional politeness: restoring a block entity from chunk NBT validates
+`BlockEntityType#isValid` (`LevelChunk:392`), so a block missing from the shared BE's block list has
+its **block entity dropped on chunk reload** — the Goggles info silently stops working.
+
+**KubeJS (modpack authors, no Java)**
+
+See "Adding Your Own Budding Blocks (KubeJS)" above: with KubeJS installed, one line —
+`CustomBudding.create(event, 'my_crystal', 20)` — registers the whole five-block family (the binding comes from
+this mod's KubeJS plugin). For hand-rolled blocks, use
+`GrowthDefinition.of(small, medium, large, cluster, n)` plus the engine.
+A complete, runnable example ships at `run/kubejs/startup_scripts/custom_budding_example.js`.
+
+**The two ways to call the engine**
+
+```java
+// Free growth (what scripts and most addons use)
+BuddingGrowthEngine.tryGrow(level, pos, random, GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
+
+// With a payment gate (how this mod's own families work: Budding Fluix spends AE before placing)
+BuddingGrowthEngine.tryGrow(serverLevel, pos, random, definition, gate);
+```
+
+Everything else is yours: block/item registration, textures, the loot table, and adding the block to
+the `#c:budding_blocks` tag (the Smart Drill's precise harvest and AE2's growth accelerator read it).
 
 ---
 
