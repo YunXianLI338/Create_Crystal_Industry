@@ -110,6 +110,18 @@ opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
 const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 ```
 
+选项也可以链式写——整条链作为 `create` 的第三个实参（两种写法等价，也能混用）：
+
+```js
+CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
+  .chance(20)
+  .requiresWater()
+  .maxLight(0)
+  .dropItem('minecraft:amethyst_shard', 2))
+```
+
+链**必须写在实参里**：选项只在 `create` 调用时读一次，`CustomBudding.create(event, id).chance(20)` 那种写法不会生效（那时方块已经建好了）。
+
 - **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
 - 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；

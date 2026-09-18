@@ -112,6 +112,20 @@ opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
 const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 ```
 
+The options can also be chained — hang the whole chain off `create`'s third argument (the two styles are
+equivalent and can be mixed):
+
+```js
+CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
+  .chance(20)
+  .requiresWater()
+  .maxLight(0)
+  .dropItem('minecraft:amethyst_shard', 2))
+```
+
+The chain **has to sit inside the call**: options are read once, when `create` runs, so
+`CustomBudding.create(event, id).chance(20)` does nothing — the blocks are already built by then.
+
 - **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
 - **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
   ship a resource pack for your own art.

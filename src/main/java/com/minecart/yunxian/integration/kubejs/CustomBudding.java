@@ -38,11 +38,11 @@ import org.slf4j.LoggerFactory;
  * 脚本里就是这么用（`CustomBudding` 由 {@link YunxianKubeJSPlugin} 绑定，无需 {@code Java.loadClass}）：
  * <pre>{@code
  * CustomBudding.create(event, 'my_crystal', 20)          // 一行：概率 1/20
- * // 或带选项：
- * const opts = new CustomBuddingOptions()
- * opts.chance = 20
- * opts.maxLight = 7
- * CustomBudding.create(event, 'my_crystal', opts)
+ * // 或带选项（逐字段赋值、链式两种写法等价，见 Options）：
+ * CustomBudding.create(event, 'my_crystal', new CustomBuddingOptions()
+ *     .chance(20)
+ *     .maxLight(7)
+ *     .requiresWater())
  * }</pre>
  * 生成 {@code <命名空间>:<id>_budding} 与 {@code _small_bud} / {@code _medium_bud} / {@code _large_bud} / {@code _cluster}；
  * 母岩的随机刻直接接到本模组的生长引擎上，芽/簇带 {@code FACING} 属性（引擎会写朝向）。
@@ -311,7 +311,26 @@ public final class CustomBudding {
     }
 
     /**
-     * 可选项。脚本里 {@code new CustomBuddingOptions()} 之后直接改字段即可。
+     * 可选项。两种写法等价、也可以混用：
+     * <pre>{@code
+     * // 一、逐字段赋值
+     * const opts = new CustomBuddingOptions()
+     * opts.chance = 20
+     * opts.requiresWater = true
+     * CustomBudding.create(event, 'my_crystal', opts)
+     *
+     * // 二、链式（整条链作为 create 的第三个实参）
+     * CustomBudding.create(event, 'my_crystal', new CustomBuddingOptions()
+     *     .chance(20)
+     *     .requiresWater()
+     *     .maxLight(0))
+     * }</pre>
+     * 链式方法都返回 {@code this}，名字与字段同名——脚本里 {@code opts.chance(20)} 与
+     * {@code opts.chance = 20} 各走各的，互不影响。
+     * <p>
+     * <b>链必须写在 {@code create} 的实参里</b>：选项只在 {@code create} 调用时读一次，
+     * 而 {@code create} 返回的是注册结果 {@link Family}，不是 builder——
+     * {@code CustomBudding.create(event, id).chance(20)} 那种写法不会生效（方块那时已经建好了）。
      */
     public static final class Options {
         /** 概率基数 n：每次随机刻有 1/n 的概率推进一级 */
@@ -339,6 +358,69 @@ public final class CustomBudding {
         public int dropCount = 1;
         /** 四个阶段的贴图，顺序：小芽 → 中芽 → 大芽 → 晶簇 */
         public String[] stageTextures = DEFAULT_STAGE_TEXTURES.clone();
+
+        // ==================== 链式设置（与上面的字段等价，可混用） ====================
+
+        public Options chance(int chance) {
+            this.chance = chance;
+            return this;
+        }
+
+        public Options maxLight(int maxLight) {
+            this.maxLight = maxLight;
+            return this;
+        }
+
+        /** 等价于 {@code requiresWater = true} */
+        public Options requiresWater() {
+            return requiresWater(true);
+        }
+
+        /** 显式给值：{@code requiresWater(false)} 可以改回不需要水 */
+        public Options requiresWater(boolean value) {
+            this.requiresWater = value;
+            return this;
+        }
+
+        public Options displayName(String displayName) {
+            this.displayName = displayName;
+            return this;
+        }
+
+        /** 传 {@code null} = 不进任何创造栏（与字段直接赋 null 一致） */
+        public Options group(@Nullable String group) {
+            this.group = group;
+            return this;
+        }
+
+        /** 晶簇普通破坏的掉落物；等价于只设 {@code dropItem}，数量沿用默认 1 */
+        public Options dropItem(@Nullable String itemId) {
+            this.dropItem = itemId;
+            return this;
+        }
+
+        /** 掉落物 + 数量一次设完 */
+        public Options dropItem(@Nullable String itemId, int count) {
+            this.dropItem = itemId;
+            this.dropCount = count;
+            return this;
+        }
+
+        public Options dropCount(int dropCount) {
+            this.dropCount = dropCount;
+            return this;
+        }
+
+        public Options buddingTexture(String buddingTexture) {
+            this.buddingTexture = buddingTexture;
+            return this;
+        }
+
+        /** 四个阶段贴图，顺序：小芽 → 中芽 → 大芽 → 晶簇 */
+        public Options stageTextures(String... stageTextures) {
+            this.stageTextures = stageTextures;
+            return this;
+        }
     }
 
     /** 注册结果：五样方块的 id，方便脚本接着写配方、标签、战利品表 */
