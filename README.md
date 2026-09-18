@@ -94,47 +94,6 @@ StartupEvents.registry('block', event => {
 母岩的随机刻已经接到生长引擎上，芽/簇自带 `FACING` 属性（朝母岩的方向长）。
 `id` 可以带命名空间（`'mypack:example_crystal'`），不带就落在 `kubejs` 命名空间。
 
-需要更多控制就用选项对象（选项在调用时读一次）：
-
-```js
-const opts = new CustomBuddingOptions()
-opts.chance = 20            // 每次随机刻 1/n
-opts.maxLight = 7           // 生长位亮度上限（负数 = 不限）
-opts.requiresWater = false  // true = 可燃冰式，目标格必须含水
-opts.displayName = '示例母岩'
-opts.stageDisplayNames = ['小芽', '中芽', '大芽', '紫晶簇']   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇
-opts.dropItem = 'mypack:my_shard'      // 晶簇普通破坏时掉的物品（精准采集始终掉晶簇本体）
-opts.dropCount = 2                     // 掉落数量，默认 1
-opts.buddingTexture = 'mypack:block/my_crystal'        // 母岩贴图
-opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
-                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
-const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
-```
-
-选项也可以链式写——整条链作为 `create` 的第三个实参（两种写法等价，也能混用）：
-
-```js
-CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
-  .chance(20)
-  .requiresWater()
-  .maxLight(0)
-  .dropItem('minecraft:amethyst_shard', 2))
-```
-
-链**必须写在实参里**：选项只在 `create` 调用时读一次，`CustomBudding.create(event, id).chance(20)` 那种写法不会生效（那时方块已经建好了）。
-
-- **名字**：母岩用 `displayName`；四个芽/簇默认是 KubeJS 按 id 生成的英文标题（`example_crystal_small_bud` → "Example Crystal Small Bud"），要改就 `stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')`——顺序是小 → 中 → 大 → 簇，某一项传 `null` 就那一项保持自动命名，可以只给其中几个起名。方块物品与方块共用一个名字，背包、掉落物、创造栏会一起变。
-- **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
-- **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
-- 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
-  `opts.group` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），设成 `null` 就完全不进标签页、只能用 `/give` 取。
-- **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `opts.dropItem` × `opts.dropCount`（默认什么都不掉），精准采集掉本体——与本模组自带芽/簇的行为一致。
-- 返回值 `family` 里有五个方块 id，用 record 访问器取：`family.budding()` / `family.smallBud()` /
-  `family.mediumBud()` / `family.largeBud()` / `family.cluster()`——是**方法调用，括号不能省**，
-  写成 `family.budding` 拿到的是方法对象而不是 id。方便接着写配方、标签、掉落表。
-- **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块都进 `#minecraft:mineable/pickaxe`——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
-- 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
-
 ### 完整示例（复制即用）
 
 把下面这段丢进 `kubejs/startup_scripts/`（文件名随意，`.js` 即可）就完事——零贴图、零资源包，
@@ -143,39 +102,39 @@ CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
 ```js
 // kubejs/startup_scripts/my_crystal.js
 StartupEvents.registry('block', event => {
-  const opts = new CustomBuddingOptions()
-  opts.chance = 20                        // 每次随机刻有 1/20 的概率往上长一级（默认 5）
-  opts.maxLight = 7                       // 生长位亮度上限 0–15；负数 = 不限（默认 -1）
-  opts.requiresWater = false              // true = 可燃冰式，目标格必须是水源（默认 false）
-  opts.displayName = '示例母岩'            // 不写就交给 KubeJS 按 id 自动命名
-  opts.stageDisplayNames = ['小芽', '中芽', '大芽', '紫晶簇']   // 四个芽/簇的名字，同样可以留空让 KubeJS 自动命名
-  opts.dropItem = 'minecraft:amethyst_shard'   // 晶簇普通破坏时掉什么；null = 什么都不掉（默认）
-  opts.dropCount = 2                      // 掉落数量，默认 1
-  opts.group = 'building_blocks'          // 创造栏：默认 'kubejs'，null = 不进任何页（只能 /give）
+  // 整条链作为 create 的第三个实参。链必须写在这里：选项只在 create 调用时读一次，
+  // CustomBudding.create(event, id).chance(20) 那种写法不会生效（那时方块已经建好了）。
+  // 逐字段赋值与链式等价、可以混用：先 const opts = new CustomBuddingOptions()，
+  // 逐行 opts.chance = 20 …，最后 CustomBudding.create(event, id, opts)。
+  const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
+    .chance(20)                                  // 每次随机刻有 1/20 的概率往上长一级（默认 5）
+    .maxLight(7)                                 // 生长位亮度上限 0–15；负数 = 不限（默认 -1）
+    .requiresWater(false)                        // 默认 false = 不需要水；可燃冰式写 .requiresWater()（目标格必须是水源）
+    .displayName('示例母岩')                      // 不写就交给 KubeJS 按 id 自动命名
+    .stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇；某一项传 null 就保持自动命名
+    .dropItem('mypack:my_shard', 2)              // 晶簇普通破坏掉的物品与数量（精准采集始终掉晶簇本体；不写则什么都不掉）
+    .buddingTexture('mypack:block/my_crystal')   // 母岩贴图
+    .stageTextures('mypack:block/my_small_bud',  // 四个阶段贴图，顺序同上
+                   'mypack:block/my_medium_bud',
+                   'mypack:block/my_large_bud',
+                   'mypack:block/my_cluster')
+    .group('building_blocks'))                   // 创造栏：默认 'kubejs'，null = 不进任何页（只能 /give）
 
-  // 一行注册整族：母岩 + 小芽 + 中芽 + 大芽 + 晶簇
-  const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
-
-  // family 里是五个方块 id，用 family.budding() / family.cluster() 这样取（record 访问器，括号不能省）
-  // 接着写配方 / 标签 / 掉落表都行
+  // family 里是五个方块 id，接着写配方 / 标签 / 掉落表都行（取法见下面的说明）
 })
 ```
 
-只要概率、其余全默认的话，一行就够：
-
-```js
-StartupEvents.registry('block', event => {
-  CustomBudding.create(event, 'example_crystal', 20)
-})
-```
-
-要自己的外观就补两行贴图（不写则四个阶段与母岩都用原版紫水晶的贴图）：
-
-```js
-opts.buddingTexture = 'mypack:block/my_crystal'
-opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
-                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
-```
+- **名字**：母岩用 `displayName('示例母岩')`；四个芽/簇默认是 KubeJS 按 id 生成的英文标题（`example_crystal_small_bud` → "Example Crystal Small Bud"），要改就 `stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')`——顺序是小 → 中 → 大 → 簇，某一项传 `null` 就那一项保持自动命名，可以只给其中几个起名。方块物品与方块共用一个名字，背包、掉落物、创造栏会一起变。
+- **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
+- **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
+- 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
+  `group(...)` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），`.group(null)` 就完全不进标签页、只能用 `/give` 取。
+- **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `dropItem(物品, 数量)` 指定的东西（默认什么都不掉），精准采集掉本体——与本模组自带芽/簇的行为一致。
+- 返回值 `family` 里有五个方块 id，用 record 访问器取：`family.budding()` / `family.smallBud()` /
+  `family.mediumBud()` / `family.largeBud()` / `family.cluster()`——是**方法调用，括号不能省**，
+  写成 `family.budding` 拿到的是方法对象而不是 id。方便接着写配方、标签、掉落表。
+- **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块都进 `#minecraft:mineable/pickaxe`——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
+- 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
 
 ### 已知限制
 
@@ -197,7 +156,7 @@ event.create('my_budding').randomTick(ctx => {
 })
 ```
 
-可跑的完整示例见上一节的「完整示例（复制即用）」；本地开发目录里另有一份
+可跑的完整示例见上面的「完整示例（复制即用）」；本地开发目录里另有一份
 `run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
 
 ---

@@ -96,52 +96,6 @@ the budding block's random ticks are already wired to the growth engine, and the
 property (so they grow pointing at the budding block). The `id` may include a namespace
 (`'mypack:example_crystal'`); without one it lands in the `kubejs` namespace.
 
-For more control, pass an options object (read once, at call time):
-
-```js
-const opts = new CustomBuddingOptions()
-opts.chance = 20            // 1-in-n per random tick
-opts.maxLight = 7           // light limit for the growth spot (negative = unlimited)
-opts.requiresWater = false  // true = flammable-ice style, the target block must be water
-opts.displayName = 'Example Budding Block'
-opts.stageDisplayNames = ['Small Bud', 'Medium Bud', 'Large Bud', 'Cluster']   // names of the four buds/cluster, in order
-opts.dropItem = 'mypack:my_shard'      // dropped by the cluster on a normal break (silk touch always drops the cluster itself)
-opts.dropCount = 2                     // how many of it, default 1
-opts.buddingTexture = 'mypack:block/my_crystal'        // budding block texture
-opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
-                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
-const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
-```
-
-The options can also be chained — hang the whole chain off `create`'s third argument (the two styles are
-equivalent and can be mixed):
-
-```js
-CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
-  .chance(20)
-  .requiresWater()
-  .maxLight(0)
-  .dropItem('minecraft:amethyst_shard', 2))
-```
-
-The chain **has to sit inside the call**: options are read once, when `create` runs, so
-`CustomBudding.create(event, id).chance(20)` does nothing — the blocks are already built by then.
-
-- **Names**: the budding block uses `displayName`; the four buds/cluster default to the English title KubeJS derives from the id (`example_crystal_small_bud` → "Example Crystal Small Bud"). Use `stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')` to change them — the order is small → medium → large → cluster, and passing `null` for one entry keeps that one automatic, so you can name only some of them. A block item shares its name with the block, so the inventory, drops and creative tab all follow.
-- **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
-- **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
-  ship a resource pack for your own art.
-- The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
-  otherwise, which makes it look like registration failed). `opts.group` can point at a vanilla tab
-  (`'building_blocks'`, …); set it to `null` to keep them out of every tab (then only `/give` gets them).
-- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); the cluster drops `opts.dropItem` × `opts.dropCount` (nothing by default) on a normal break, and itself with silk touch — same behaviour as this mod's own buds/cluster.
-- The returned `family` holds the five block ids, read through its record accessors: `family.budding()`,
-  `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
-  the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy for
-  recipes, tags and loot tables.
-- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join `#minecraft:mineable/pickaxe` — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
-- Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
-
 ### Complete example (copy & run)
 
 Drop this into `kubejs/startup_scripts/` (any file name, as long as it ends in `.js`) and you're done — no
@@ -150,39 +104,43 @@ textures, no resource pack: the budding block and its buds/cluster use vanilla a
 ```js
 // kubejs/startup_scripts/my_crystal.js
 StartupEvents.registry('block', event => {
-  const opts = new CustomBuddingOptions()
-  opts.chance = 20                        // 1-in-20 per random tick to advance one stage (default 5)
-  opts.maxLight = 7                       // light limit for the growth spot, 0-15; negative = unlimited (default -1)
-  opts.requiresWater = false              // true = flammable-ice style, the target block must be water (default false)
-  opts.displayName = 'Example Budding Block'   // omit to let KubeJS name it from the id
-  opts.stageDisplayNames = ['Small Bud', 'Medium Bud', 'Large Bud', 'Cluster']   // names of the four buds/cluster; leave entries null to keep them automatic
-  opts.dropItem = 'minecraft:amethyst_shard'   // dropped by the cluster on a normal break; null = nothing (default)
-  opts.dropCount = 2                      // how many of it, default 1
-  opts.group = 'building_blocks'          // creative tab: 'kubejs' by default; null = no tab at all (only /give)
+  // The whole chain is `create`'s third argument. It has to sit here: options are read once,
+  // when `create` runs, so CustomBudding.create(event, id).chance(20) does nothing (the blocks
+  // are already built by then). Field-by-field assignment is equivalent and can be mixed:
+  // const opts = new CustomBuddingOptions(), then opts.chance = 20 …, then create(event, id, opts).
+  const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
+    .chance(20)                                  // 1-in-20 per random tick to advance one stage (default 5)
+    .maxLight(7)                                 // light limit for the growth spot, 0-15; negative = unlimited (default -1)
+    .requiresWater(false)                        // false = no water needed (default); flammable-ice style is .requiresWater()
+    .displayName('Example Budding Block')        // omit to let KubeJS name it from the id
+    .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // names of the four buds/cluster, small → medium → large → cluster; null keeps that one automatic
+    .dropItem('mypack:my_shard', 2)              // dropped by the cluster on a normal break (silk touch always drops the cluster itself; omit for nothing)
+    .buddingTexture('mypack:block/my_crystal')   // budding block texture
+    .stageTextures('mypack:block/my_small_bud',  // four stage textures, same order
+                   'mypack:block/my_medium_bud',
+                   'mypack:block/my_large_bud',
+                   'mypack:block/my_cluster')
+    .group('building_blocks'))                   // creative tab: 'kubejs' by default; null = no tab at all (only /give)
 
-  // one line registers the whole family: budding block + small/medium/large bud + cluster
-  const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
-
-  // family holds the five block ids, read them as family.budding() / family.cluster()
-  // (record accessors — the parentheses are required) — ready for recipes / tags / loot tables
+  // family holds the five block ids (see the notes below for how to read them),
+  // ready for recipes / tags / loot tables
 })
 ```
 
-Just the chance, everything else left at its default:
-
-```js
-StartupEvents.registry('block', event => {
-  CustomBudding.create(event, 'example_crystal', 20)
-})
-```
-
-For your own art, add two lines (without them the budding block and all four stages use vanilla amethyst textures):
-
-```js
-opts.buddingTexture = 'mypack:block/my_crystal'
-opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
-                      'mypack:block/my_large_bud', 'mypack:block/my_cluster']
-```
+- **Names**: the budding block uses `displayName('Example Budding Block')`; the four buds/cluster default to the English title KubeJS derives from the id (`example_crystal_small_bud` → "Example Crystal Small Bud"). Use `stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')` to change them — the order is small → medium → large → cluster, and passing `null` for one entry keeps that one automatic, so you can name only some of them. A block item shares its name with the block, so the inventory, drops and creative tab all follow.
+- **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
+- **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
+  ship a resource pack for your own art.
+- The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
+  otherwise, which makes it look like registration failed). `group(...)` can point at a vanilla tab
+  (`'building_blocks'`, …); `.group(null)` keeps them out of every tab (then only `/give` gets them).
+- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); on a normal break the cluster drops whatever `dropItem(item, count)` names (nothing by default), and itself with silk touch — same behaviour as this mod's own buds/cluster.
+- The returned `family` holds the five block ids, read through its record accessors: `family.budding()`,
+  `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
+  the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy for
+  recipes, tags and loot tables.
+- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join `#minecraft:mineable/pickaxe` — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
+- Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
 
 ### Known limitations
 
@@ -203,7 +161,7 @@ event.create('my_budding').randomTick(ctx => {
 })
 ```
 
-See the complete example in the previous section; a local dev copy lives at
+See the "Complete example (copy & run)" above; a local dev copy lives at
 `run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
 
 ---
