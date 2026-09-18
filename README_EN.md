@@ -135,7 +135,9 @@ The chain **has to sit inside the call**: options are read once, when `create` r
   otherwise, which makes it look like registration failed). `opts.group` can point at a vanilla tab
   (`'building_blocks'`, …); set it to `null` to keep them out of every tab (then only `/give` gets them).
 - **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); the cluster drops `opts.dropItem` × `opts.dropCount` (nothing by default) on a normal break, and itself with silk touch — same behaviour as this mod's own buds/cluster.
-- The returned `family` holds the five block ids (`family.budding`, `family.cluster`, …) so you can keep going with
+- The returned `family` holds the five block ids, read through its record accessors: `family.budding()`,
+  `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
+  the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy for
   recipes, tags and loot tables.
 - **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join `#minecraft:mineable/pickaxe` — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
 - Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
@@ -152,7 +154,8 @@ StartupEvents.registry('block', event => {
   opts.chance = 20                        // 1-in-20 per random tick to advance one stage (default 5)
   opts.maxLight = 7                       // light limit for the growth spot, 0-15; negative = unlimited (default -1)
   opts.requiresWater = false              // true = flammable-ice style, the target block must be water (default false)
-  opts.displayName = 'Example Budding Block'   // omit to let KubeJS name it from the id (same for buds/cluster)
+  opts.displayName = 'Example Budding Block'   // omit to let KubeJS name it from the id
+  opts.stageDisplayNames = ['Small Bud', 'Medium Bud', 'Large Bud', 'Cluster']   // names of the four buds/cluster; leave entries null to keep them automatic
   opts.dropItem = 'minecraft:amethyst_shard'   // dropped by the cluster on a normal break; null = nothing (default)
   opts.dropCount = 2                      // how many of it, default 1
   opts.group = 'building_blocks'          // creative tab: 'kubejs' by default; null = no tab at all (only /give)
@@ -160,7 +163,8 @@ StartupEvents.registry('block', event => {
   // one line registers the whole family: budding block + small/medium/large bud + cluster
   const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 
-  // family holds the five block ids, ready for recipes / tags / loot tables
+  // family holds the five block ids, read them as family.budding() / family.cluster()
+  // (record accessors — the parentheses are required) — ready for recipes / tags / loot tables
 })
 ```
 
