@@ -102,6 +102,7 @@ opts.chance = 20            // 每次随机刻 1/n
 opts.maxLight = 7           // 生长位亮度上限（负数 = 不限）
 opts.requiresWater = false  // true = 可燃冰式，目标格必须含水
 opts.displayName = '示例母岩'
+opts.stageDisplayNames = ['小芽', '中芽', '大芽', '紫晶簇']   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇
 opts.dropItem = 'mypack:my_shard'      // 晶簇普通破坏时掉的物品（精准采集始终掉晶簇本体）
 opts.dropCount = 2                     // 掉落数量，默认 1
 opts.buddingTexture = 'mypack:block/my_crystal'        // 母岩贴图
@@ -122,6 +123,7 @@ CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
 
 链**必须写在实参里**：选项只在 `create` 调用时读一次，`CustomBudding.create(event, id).chance(20)` 那种写法不会生效（那时方块已经建好了）。
 
+- **名字**：母岩用 `displayName`；四个芽/簇默认是 KubeJS 按 id 生成的英文标题（`example_crystal_small_bud` → "Example Crystal Small Bud"），要改就 `stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')`——顺序是小 → 中 → 大 → 簇，某一项传 `null` 就那一项保持自动命名，可以只给其中几个起名。方块物品与方块共用一个名字，背包、掉落物、创造栏会一起变。
 - **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
 - 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；

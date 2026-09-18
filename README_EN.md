@@ -104,6 +104,7 @@ opts.chance = 20            // 1-in-n per random tick
 opts.maxLight = 7           // light limit for the growth spot (negative = unlimited)
 opts.requiresWater = false  // true = flammable-ice style, the target block must be water
 opts.displayName = 'Example Budding Block'
+opts.stageDisplayNames = ['Small Bud', 'Medium Bud', 'Large Bud', 'Cluster']   // names of the four buds/cluster, in order
 opts.dropItem = 'mypack:my_shard'      // dropped by the cluster on a normal break (silk touch always drops the cluster itself)
 opts.dropCount = 2                     // how many of it, default 1
 opts.buddingTexture = 'mypack:block/my_crystal'        // budding block texture
@@ -126,6 +127,7 @@ CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
 The chain **has to sit inside the call**: options are read once, when `create` runs, so
 `CustomBudding.create(event, id).chance(20)` does nothing — the blocks are already built by then.
 
+- **Names**: the budding block uses `displayName`; the four buds/cluster default to the English title KubeJS derives from the id (`example_crystal_small_bud` → "Example Crystal Small Bud"). Use `stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')` to change them — the order is small → medium → large → cluster, and passing `null` for one entry keeps that one automatic, so you can name only some of them. A block item shares its name with the block, so the inventory, drops and creative tab all follow.
 - **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
 - **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
   ship a resource pack for your own art.

@@ -116,6 +116,13 @@ public final class CustomBudding {
             builder.sourceLine = SourceLine.UNKNOWN;
             builder.soundType(SoundType.AMETHYST);
             builder.renderType(BlockRenderType.CUTOUT);
+            // 名字：不指定就交给 KubeJS 按 id 自动命名（snake_case 转英文标题，写进 en_us 虚拟语言文件）；
+            // 方块物品与方块共用同一个语言键（BlockItemBuilder#getTranslationKeyGroup 返回 "block"），
+            // 所以这里设一次，背包/掉落物/创造栏一起变
+            String stageName = stageDisplayName(options, i);
+            if (stageName != null) {
+                builder.displayName(Component.literal(stageName));
+            }
             builder.tag(new ResourceLocation[]{MINEABLE_PICKAXE_TAG});
             forceItem(builder, false);
             registerBlock(event, builder);
@@ -236,6 +243,23 @@ public final class CustomBudding {
     }
 
     /**
+     * 取第 {@code index} 个阶段（顺序：小 → 中 → 大 → 簇）的显示名。
+     * <p>
+     * 数组没配、比四个短、或那一项是 {@code null}/空白，都返回 {@code null}——
+     * 表示这一项交给 KubeJS 按 id 自动命名，所以可以只给其中几个起名。
+     */
+    @Nullable
+    private static String stageDisplayName(Options options, int index) {
+        String[] names = options.stageDisplayNames;
+        if (names == null || index >= names.length) {
+            return null;
+        }
+
+        String name = names[index];
+        return name == null || name.isBlank() ? null : name;
+    }
+
+    /**
      * 注册方块：{@code add} 只把它放进注册表，物品是在 KubeJS 的 {@code afterPosted} 里
      * 遍历 {@code created} 时才创建的（{@code createAdditionalObjects}）——
      * 脚本的 {@code event.create(...)} 会同时放这两处，我们手工走 {@code add} 必须自己补上，
@@ -339,8 +363,16 @@ public final class CustomBudding {
         public int maxLight = -1;
         /** 目标格必须含水（可燃冰式） */
         public boolean requiresWater = false;
-        /** 母岩的显示名；null = 交给 KubeJS 按 id 自动命名（芽/簇同理自动命名） */
+        /** 母岩的显示名；null = 交给 KubeJS 按 id 自动命名 */
         public @Nullable String displayName = null;
+        /**
+         * 四个阶段的显示名，顺序：小芽 → 中芽 → 大芽 → 晶簇。
+         * <p>
+         * 不配、比四个短、或某一项是 {@code null}/空白，那一项就交给 KubeJS 按 id 自动命名
+         * （{@code example_crystal_small_bud} → "Example Crystal Small Bud"，写进 en_us 虚拟语言文件），
+         * 所以可以只给其中几个起名。
+         */
+        public @Nullable String[] stageDisplayNames = null;
         /**
          * 创造模式标签页：默认 {@code "kubejs"}（KubeJS 自己那一页）。
          * 可以换成原版页（{@code "building_blocks"} / {@code "natural_blocks"} / {@code "functional_blocks"} …，用方块 id 里那套下划线写法），
@@ -384,6 +416,12 @@ public final class CustomBudding {
 
         public Options displayName(String displayName) {
             this.displayName = displayName;
+            return this;
+        }
+
+        /** 四个阶段的显示名，顺序：小芽 → 中芽 → 大芽 → 晶簇；传 {@code null} 的那项保持自动命名 */
+        public Options stageDisplayNames(@Nullable String... stageDisplayNames) {
+            this.stageDisplayNames = stageDisplayNames;
             return this;
         }
 
