@@ -110,22 +110,19 @@ opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
 const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 ```
 
+- **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
 - 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
   `opts.group` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），设成 `null` 就完全不进标签页、只能用 `/give` 取。
 - **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `opts.dropItem` × `opts.dropCount`（默认什么都不掉），精准采集掉本体——与本模组自带芽/簇的行为一致。
 - 返回值 `family` 里有五个方块 id（`family.budding` / `family.cluster` …），方便接着写配方、标签、掉落表。
-- **别忘了加标签**：把母岩加进 `#c:budding_blocks`，智能钻头的精准采集与 AE2 晶体催生器才认它
-  （`ServerEvents.tags('block', event => event.add('c:budding_blocks', 'kubejs:example_crystal_budding'))`）。
-- 掉落物走原版掉落表（`loot_table/blocks/...`），贴图与名字走资源包 / lang —— 都在你自己的命名空间下。
+- **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块都进 `#minecraft:mineable/pickaxe`——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
+- 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
 
 ### 已知限制
 
-- 这类母岩是 KubeJS 的方块，不是本模组的方块类，所以**没有护目镜的「生长速度」面板**，
-  也**不进配置文件里的四档**（概率由脚本里的 `chance` 决定）。
-- 芽/簇默认**不带碰撞箱**：KubeJS 的 `box(...)` 不随朝向旋转，侧向实例会错位，索性不设。
-  要精确形状就自己注册阶段方块，用下面的低阶接口把 `stages` 指过去。
-- 想要"护目镜 + 配置档位 + 精确形状"全都有的原生体验，那要走附属模组的 Java 路线（见开发一节）。
+- 不进配置文件里的四档（概率由脚本里的 `chance` 决定）；自发光、红石信号这类**烘焙在方块属性里**的东西也不可配
+  （要这些就走附属模组的 Java 路线，见开发一节）。
 
 ### 低阶接口（自己拼定义）
 

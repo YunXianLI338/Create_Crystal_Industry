@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Locale;
 
 import com.minecart.yunxian.block.AcceleratorBlock;
+import com.minecart.yunxian.block.budding.ScriptedBuddingBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.blockentity.MechanicalAcceleratorBlockEntity;
+import com.minecart.yunxian.budding.GrowthDefinition;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.integration.ae2.AE2Budding;
 import com.minecart.yunxian.registry.ModBlocks;
@@ -15,11 +17,13 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 /** 母岩“当前生长速度”的共享计算/渲染辅助 */
 public final class BuddingGrowthHelper {
@@ -113,5 +117,40 @@ public final class BuddingGrowthHelper {
                 .add(Component.literal(text)
                         .withStyle(ChatFormatting.WHITE))
                 .forGoggles(tooltip, 1);
+    }
+
+    /**
+     * 脚本（KubeJS）注册的母岩额外显示它的生长参数（概率 / 光照 / 含水）。
+     * <p>
+     * 客户端也能读到：这些参数是脚本随方块实例传进来的（{@code ScriptedBuddingBlock} 持有定义），
+     * 不需要服务端同步。自带家族不显示这几行（它们的档位在配置文件里，护目镜显示的倍率即为所需）。
+     */
+    public static void appendScriptedInfo(BlockState state, List<Component> tooltip) {
+        if (!(state.getBlock() instanceof ScriptedBuddingBlock scripted)) {
+            return;
+        }
+        GrowthDefinition definition = scripted.growthDefinition();
+
+        addLine(tooltip, "create_crystal_industry.goggles.scripted.chance", definition.chance());
+
+        if (definition.maxLight().isPresent()) {
+            addLine(tooltip, "create_crystal_industry.goggles.scripted.max_light",
+                    definition.maxLight().getAsInt());
+        }
+        if (definition.requiresWater()) {
+            addLine(tooltip, "create_crystal_industry.goggles.scripted.requires_water");
+        }
+    }
+
+    private static void addLine(List<Component> tooltip, String key, int arg) {
+        addLine(tooltip, Component.translatable(key, arg));
+    }
+
+    private static void addLine(List<Component> tooltip, String key) {
+        addLine(tooltip, Component.translatable(key));
+    }
+
+    private static void addLine(List<Component> tooltip, MutableComponent text) {
+        CreateLang.builder().add(text.withStyle(ChatFormatting.GRAY)).forGoggles(tooltip, 1);
     }
 }

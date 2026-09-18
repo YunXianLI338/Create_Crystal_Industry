@@ -8,6 +8,8 @@ import java.util.Set;
 import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.budding.BuddingFamily.BlockEntityKind;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 
 /**
@@ -29,6 +31,8 @@ public final class BuddingRegistration {
 
     /** 外部声明的母岩方块（要保持声明顺序，所以用 LinkedHashSet） */
     private static final Set<Block> DECLARED_BLOCKS = new LinkedHashSet<>();
+    /** 按 id 声明的母岩方块，延后到方块实体类型注册时解析 */
+    private static final Set<ResourceLocation> DECLARED_BLOCK_IDS = new LinkedHashSet<>();
     /** 外部声明的家族 id：让配置文件的四档能列出它们 */
     private static final Set<String> DECLARED_IDS = new LinkedHashSet<>();
 
@@ -41,6 +45,17 @@ public final class BuddingRegistration {
      */
     public static void declareBuddingBlock(Block block) {
         DECLARED_BLOCKS.add(block);
+    }
+
+    /**
+     * 同上，但用方块 id 声明——给"脚本注册、拿不到方块对象"的场景用
+     * （{@code CustomBudding} 在脚本执行时只有 id，方块要等注册事件才建出来）。
+     * <p>
+     * 解析推迟到方块实体类型注册时（{@link #sharedGogglesBlocks()}），那时方块已经入表：
+     * 注册事件里方块总是先于方块实体类型，所以 id 一定能查到。
+     */
+    public static void declareBuddingBlock(ResourceLocation blockId) {
+        DECLARED_BLOCK_IDS.add(blockId);
     }
 
     /**
@@ -71,6 +86,12 @@ public final class BuddingRegistration {
             }
         }
         blocks.addAll(DECLARED_BLOCKS);
+        for (ResourceLocation blockId : DECLARED_BLOCK_IDS) {
+            Block block = BuiltInRegistries.BLOCK.get(blockId);
+            if (block != null) {
+                blocks.add(block);
+            }
+        }
         return blocks.toArray(Block[]::new);
     }
 }

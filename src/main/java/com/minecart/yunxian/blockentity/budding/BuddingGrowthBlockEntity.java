@@ -24,8 +24,11 @@ public class BuddingGrowthBlockEntity extends BlockEntity implements IHaveGoggle
 
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-        if (level != null)
+        if (level != null) {
             BuddingGrowthHelper.appendGrowthTooltip(level, worldPosition, tooltip);
+            // 脚本注册的母岩再补上它的生长参数（概率/光照/含水），自带家族没有这几行
+            BuddingGrowthHelper.appendScriptedInfo(getBlockState(), tooltip);
+        }
         return true;
     }
 }

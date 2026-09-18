@@ -1,10 +1,13 @@
 package com.minecart.yunxian.integration.kubejs;
 
 import java.util.Map;
+import java.util.function.Supplier;
 
+import com.minecart.yunxian.block.budding.ScriptedBuddingBlock;
 import com.minecart.yunxian.block.budding.YunxianClusterBlock;
 import com.minecart.yunxian.budding.BuddingFamilies.Stage;
 import com.minecart.yunxian.budding.BuddingGrowthEngine;
+import com.minecart.yunxian.budding.BuddingRegistration;
 import com.minecart.yunxian.budding.GrowthDefinition;
 import com.minecart.yunxian.registry.ModCreativeTabs;
 import com.minecart.yunxian.registry.ScriptedBlockDrops;
@@ -124,9 +127,10 @@ public final class CustomBudding {
                     cluster ? options.dropCount : 1);
         }
 
-        // 母岩本体：随机刻 → 本模组的生长引擎
+        // 母岩本体：用模组自己的方块类（它自带随机刻 → 生长引擎，且带共享展示 BE，护目镜才显示信息）
         ResourceLocation buddingId = ResourceLocation.fromNamespaceAndPath(namespace, base.getPath() + "_budding");
-        BlockBuilder budding = new BasicKubeBlock.Builder(buddingId);
+        LazyDefinition definition = new LazyDefinition(stages, options);
+        BlockBuilder budding = new MotherBuilder(buddingId, definition);
         budding.sourceLine = SourceLine.UNKNOWN;
         budding.texture(options.buddingTexture);
         budding.soundType(SoundType.AMETHYST);
@@ -135,11 +139,11 @@ public final class CustomBudding {
         if (options.displayName != null) {
             budding.displayName(Component.literal(options.displayName));
         }
-        LazyDefinition definition = new LazyDefinition(stages, options);
-        budding.randomTick(ctx -> BuddingGrowthEngine.tryGrow(
-                ctx.getLevel(), ctx.block.getPos(), ctx.random, definition.get()));
         forceItem(budding, true);
         registerBlock(event, budding);
+
+        // 护目镜信息挂在方块实体上：把母岩声明给共享展示 BE（按 id——此刻方块还没建出来）
+        BuddingRegistration.declareBuddingBlock(buddingId);
 
         // 母岩：普通破坏/普通采集什么都不掉（与原版紫水晶母岩一致），精准采集才掉本体——
         // 所以智能钻头的普通模式拿不到母岩，精准模式才拿得到（它读 c:budding_blocks 直接掉本体）
@@ -202,6 +206,27 @@ public final class CustomBudding {
             throw new IllegalArgumentException("不是合法的方块 id：" + id);
         }
         return parsed;
+    }
+
+    /**
+     * 母岩专用的 builder：建出<b>本模组的脚本母岩方块</b>，而不是 KubeJS 的通用方块。
+     * 只有这样它才带共享展示方块实体——护目镜的生长信息挂在实体上
+     * （{@code BuddingGrowthBlockEntity} 实现 Create 的 {@code IHaveGoggleInformation}）。
+     * 随机刻也因此由方块自己处理（见 {@code ScriptedBuddingBlock}），不必再挂 KubeJS 回调。
+     */
+    private static final class MotherBuilder extends BasicKubeBlock.Builder {
+
+        private final Supplier<GrowthDefinition> definition;
+
+        MotherBuilder(ResourceLocation id, Supplier<GrowthDefinition> definition) {
+            super(id);
+            this.definition = definition;
+        }
+
+        @Override
+        public Block createObject() {
+            return new ScriptedBuddingBlock(definition, createProperties());
+        }
     }
 
     /** 把物品 id 字符串转成 ResourceLocation；null 或非法一律当没有 */
@@ -325,7 +350,7 @@ public final class CustomBudding {
      * 生长定义要等首次随机刻才构造：KubeJS 启动脚本执行时，其它模组（含本模组）的方块还没注册完
      * （模组方块在注册事件里才入表），所以只能到时候按 id 解析一次并缓存。
      */
-    private static final class LazyDefinition {
+    private static final class LazyDefinition implements Supplier<GrowthDefinition> {
         private final ResourceLocation[] stages;
         private final int chance;
         private final int maxLight;
@@ -341,7 +366,8 @@ public final class CustomBudding {
             this.requiresWater = options.requiresWater;
         }
 
-        GrowthDefinition get() {
+        @Override
+        public GrowthDefinition get() {
             GrowthDefinition definition = cached;
             if (definition == null) {
                 definition = GrowthDefinition.of(stages[0].toString(), stages[1].toString(),

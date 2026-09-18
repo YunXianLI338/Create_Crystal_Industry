@@ -112,6 +112,7 @@ opts.stageTextures = ['mypack:block/my_small_bud', 'mypack:block/my_medium_bud',
 const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 ```
 
+- **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
 - **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
   ship a resource pack for your own art.
 - The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
@@ -120,21 +121,12 @@ const family = CustomBudding.create(event, 'mypack:example_crystal', opts)
 - **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); the cluster drops `opts.dropItem` × `opts.dropCount` (nothing by default) on a normal break, and itself with silk touch — same behaviour as this mod's own buds/cluster.
 - The returned `family` holds the five block ids (`family.budding`, `family.cluster`, …) so you can keep going with
   recipes, tags and loot tables.
-- **Don't forget the tag**: add the budding block to `#c:budding_blocks` or the Smart Drill's silk-touch harvest and
-  AE2's Crystal Growth Accelerator will not recognise it
-  (`ServerEvents.tags('block', event => event.add('c:budding_blocks', 'kubejs:example_crystal_budding'))`).
-- Drops use vanilla loot tables (`loot_table/blocks/...`); textures and names come from a resource pack / lang —
-  all in your own namespace.
+- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join `#minecraft:mineable/pickaxe` — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
+- Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
 
 ### Known limitations
 
-- These blocks are KubeJS blocks, not this mod's block class, so they have **no Goggles growth-speed panel** and
-  they **do not appear in the config tiers** (the chance comes from your script).
-- The buds/cluster ship **without a collision box**: KubeJS's `box(...)` does not rotate with the facing, so
-  side-facing instances would be misaligned. For exact shapes, register your own stage blocks and point the engine
-  at them with the low-level API below.
-- For the full native experience (Goggles panel, config tiers, exact shapes) use the addon-mod route
-  (see the Development section).
+- They **do not appear in the config tiers** (the chance comes from your script), and baked-in block properties such as light emission or a redstone signal are not configurable either (for those, use the addon-mod route — see the Development section).
 
 ### Low-level API (build the definition yourself)
 
