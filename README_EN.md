@@ -43,6 +43,8 @@ A vanilla budding block only receives a random tick once every ~68 seconds on av
 
 Both accelerators' **acceleration interval** is configurable (`Acceleration Interval (ticks)`, default 1 = every tick; larger = slower). The electric one pays FE per pass, so slowing it down also saves power. The Goggles multiplier follows the config.
 
+**Vanilla Budding Amethyst gets the same line**: point the Goggles at one inside a natural geode and it shows the growth speed too. The vanilla block itself is untouched and the info is synthesized client-side, so nothing extra is written into your saves — and it works on other people's servers as well.
+
 > ⚠️ Random ticks drive **far more than crystals**: crops, saplings, copper oxidation, nether wart — anything random-tick based gets accelerated too. **It is a general-purpose accelerator**, and crystals are simply the most profitable thing to point it at.
 
 ---

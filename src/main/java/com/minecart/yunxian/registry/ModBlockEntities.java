@@ -14,7 +14,9 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 public final class ModBlockEntities {
@@ -59,11 +61,26 @@ public final class ModBlockEntities {
                     BuddingFamilies.ECHO.budding().get()
             ).build(null));
     // 母岩共享的“生长速度”展示 BE：凡是没指定专用 BE 的家族都走这里。
-    // 合法方块表由 BuddingRegistration 汇总（自带家族 + 附属模组声明的方块）
+    // 合法方块表见 goggleInfoBlocks()：BuddingRegistration 的汇总 + 原版紫水晶母岩
     public static final Supplier<BlockEntityType<BuddingGrowthBlockEntity>> BUDDING_GROWTH =
             BLOCK_ENTITIES.register("budding_growth", () -> BlockEntityType.Builder
-                    .of(BuddingGrowthBlockEntity::new, BuddingRegistration.sharedGogglesBlocks())
+                    .of(BuddingGrowthBlockEntity::new, goggleInfoBlocks())
                     .build(null));
+
+    /**
+     * 共享护目镜 BE 的合法方块 = 自带家族 + 附属模组声明的方块 + 原版紫水晶母岩。
+     * <p>
+     * 原版母岩只是“信息展示”的借名对象：客户端按需为它合成一个临时实例
+     * （见 {@code client/budding/VanillaBuddingGoggles}），实例不进世界、
+     * 不落盘。但这里仍必须登记——方块实体的构造器会校验
+     * {@code BlockEntityType#isValid}，不在表里当场抛异常。
+     */
+    private static Block[] goggleInfoBlocks() {
+        Block[] declared = BuddingRegistration.sharedGogglesBlocks();
+        Block[] blocks = Arrays.copyOf(declared, declared.length + 1);
+        blocks[declared.length] = Blocks.BUDDING_AMETHYST;
+        return blocks;
+    }
 
     // ★ 软依赖：类型刻意写成 BlockEntityType<?>，避免 FluixBuddingBlockEntity
     // 出现在本常驻类的任何签名/描述符中（否则 JVM 校验时会去加载 AE2 类型而崩溃）。
