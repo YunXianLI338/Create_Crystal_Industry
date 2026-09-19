@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -22,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * 脚本（KubeJS）注册的芽/簇的掉落规则：<b>精准采集掉本体，否则掉配置的物品</b>
- * （默认什么都不掉）——与本模组自带芽/簇的行为一致。
+ * （数量受时运加成，默认什么都不掉）——与本模组自带芽/簇的行为一致。
  * <p>
  * 为什么不用战利品表：KubeJS 的 {@code BlockBuilder#generateLootTable()} 虽然能覆写，
  * 但在 2101 里**没有任何调用者**（只被标了 {@code @Deprecated(forRemoval)}），覆写了也不生效；
@@ -56,7 +57,7 @@ public final class ScriptedBlockDrops {
 
     /** 事件入口（在 {@code Yunxian} 的构造器里挂到游戏事件总线上） */
     public static void onBlockDrops(BlockDropsEvent event) {
-        List<ItemStack> drops = dropsFor(event.getState(), event.getTool());
+        List<ItemStack> drops = dropsFor(event.getState(), event.getTool(), event.getLevel().getRandom());
         if (drops == null) {
             return; // 不是脚本方块（或没登记规则）：交给别的模组与原版逻辑
         }
@@ -74,12 +75,14 @@ public final class ScriptedBlockDrops {
     }
 
     /**
-     * 按规则算出掉落物：<b>精准采集 → 方块本体</b>；否则晶簇掉配置的物品、芽与母岩什么都不掉。
+     * 按规则算出掉落物：<b>精准采集 → 方块本体</b>；否则晶簇掉配置的物品（<b>受时运加成</b>）、
+     * 芽与母岩什么都不掉。
      *
+     * @param random 计算时运加成的随机源；null = 不算加成（要"基准数量"的调用方用，见下面那个重载）
      * @return 掉落列表；返回 {@code null} 表示这个方块不归我们管
      */
     @Nullable
-    public static List<ItemStack> dropsFor(BlockState state, ItemStack tool) {
+    public static List<ItemStack> dropsFor(BlockState state, ItemStack tool, @Nullable RandomSource random) {
         Rule rule = RULES.get(BuiltInRegistries.BLOCK.getKey(state.getBlock()));
         if (rule == null) {
             return null;
@@ -87,8 +90,29 @@ public final class ScriptedBlockDrops {
         if (hasSilkTouch(tool)) {
             return List.of(new ItemStack(state.getBlock()));
         }
-        ItemStack configured = itemStack(rule.item().orElse(null), rule.count());
+        ItemStack configured = itemStack(rule.item().orElse(null), withFortune(rule.count(), tool, random));
         return configured.isEmpty() ? List.of() : List.of(configured);
+    }
+
+    /**
+     * 基础掉落：不算时运加成——JEI 的母岩信息页用它显示"基准数量"，
+     * 按空手模拟的那些调用方（如智能钻头）用的也是这一份。
+     */
+    public static List<ItemStack> dropsFor(BlockState state, ItemStack tool) {
+        return dropsFor(state, tool, null);
+    }
+
+    /**
+     * 时运加成后的数量：与本模组自带晶簇的掉落表保持一致——那张表里写的是
+     * {@code apply_bonus + uniform_bonus_count, bonusMultiplier = 1}，也就是每一级额外给 0..等级 个。
+     */
+    private static int withFortune(int count, ItemStack tool, @Nullable RandomSource random) {
+        if (random == null) {
+            return count;
+        }
+        int fortune = fortuneLevel(tool);
+        // 没有时运时不消耗随机数：信息页与按空手模拟的调用方传的是 null，本来就到不了这里
+        return fortune > 0 ? count + random.nextInt(fortune + 1) : count;
     }
 
     /** 精准采集：直接比对附魔的 ResourceKey，不需要附魔注册表（它在 1.21 是数据包注册表） */
@@ -102,6 +126,19 @@ public final class ScriptedBlockDrops {
             }
         }
         return false;
+    }
+
+    /** 时运等级（没有就是 0）：同样只比对 ResourceKey */
+    private static int fortuneLevel(ItemStack tool) {
+        if (tool.isEmpty()) {
+            return 0;
+        }
+        for (Holder<Enchantment> enchantment : tool.getEnchantments().keySet()) {
+            if (enchantment.is(Enchantments.FORTUNE)) {
+                return tool.getEnchantments().getLevel(enchantment);
+            }
+        }
+        return 0;
     }
 
     private static ItemStack itemStack(@Nullable ResourceLocation itemId, int count) {

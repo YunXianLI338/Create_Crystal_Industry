@@ -129,7 +129,7 @@ StartupEvents.registry('block', event => {
     .requiresWater(false)                        // 默认 false = 不需要水；可燃冰式写 .requiresWater()（目标格必须是水源）
     .displayName('示例母岩')                      // 不写就交给 KubeJS 按 id 自动命名
     .stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇；某一项传 null 就保持自动命名
-    .dropItem('mypack:my_shard', 2)              // 晶簇普通破坏掉的物品与数量（精准采集始终掉晶簇本体；不写则什么都不掉）
+    .dropItem('mypack:my_shard', 2)              // 晶簇普通破坏掉的物品与数量（时运每级再加 0~等级 个；精准采集始终掉晶簇本体；不写则什么都不掉）
     .buddingTexture('mypack:block/my_crystal')   // 母岩贴图
     .stageTextures('mypack:block/my_small_bud',  // 四个阶段贴图，顺序同上
                    'mypack:block/my_medium_bud',
@@ -146,7 +146,8 @@ StartupEvents.registry('block', event => {
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
 - 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
   `group(...)` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），`.group(null)` 就完全不进标签页、只能用 `/give` 取。
-- **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `dropItem(物品, 数量)` 指定的东西（默认什么都不掉），精准采集掉本体——与本模组自带芽/簇的行为一致。
+- **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `dropItem(物品, 数量)` 指定的东西（默认什么都不掉，
+  **数量受时运加成**：每一级额外给 0~等级 个，与自带晶簇的掉落表一致），精准采集掉本体——与本模组自带芽/簇的行为一致。
 - 返回值 `family` 里有五个方块 id，用 record 访问器取：`family.budding()` / `family.smallBud()` /
   `family.mediumBud()` / `family.largeBud()` / `family.cluster()`——是**方法调用，括号不能省**，
   写成 `family.budding` 拿到的是方法对象而不是 id。方便接着写配方、标签、掉落表。

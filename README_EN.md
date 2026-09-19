@@ -134,7 +134,7 @@ StartupEvents.registry('block', event => {
     .requiresWater(false)                        // false = no water needed (default); flammable-ice style is .requiresWater()
     .displayName('Example Budding Block')        // omit to let KubeJS name it from the id
     .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // names of the four buds/cluster, small → medium → large → cluster; null keeps that one automatic
-    .dropItem('mypack:my_shard', 2)              // dropped by the cluster on a normal break (silk touch always drops the cluster itself; omit for nothing)
+    .dropItem('mypack:my_shard', 2)              // dropped by the cluster on a normal break (fortune adds 0..level more; silk touch always drops the cluster itself; omit for nothing)
     .buddingTexture('mypack:block/my_crystal')   // budding block texture
     .stageTextures('mypack:block/my_small_bud',  // four stage textures, same order
                    'mypack:block/my_medium_bud',
@@ -154,7 +154,9 @@ StartupEvents.registry('block', event => {
 - The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
   otherwise, which makes it look like registration failed). `group(...)` can point at a vanilla tab
   (`'building_blocks'`, …); `.group(null)` keeps them out of every tab (then only `/give` gets them).
-- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); on a normal break the cluster drops whatever `dropItem(item, count)` names (nothing by default), and itself with silk touch — same behaviour as this mod's own buds/cluster.
+- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); on a normal break the cluster drops
+  whatever `dropItem(item, count)` names (nothing by default, **fortune adds 0..level more** — matching the loot tables of
+  this mod's own clusters), and itself with silk touch — same behaviour as this mod's own buds/cluster.
 - The returned `family` holds the five block ids, read through its record accessors: `family.budding()`,
   `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
   the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy for

@@ -386,9 +386,11 @@ public final class CustomBudding {
         /**
          * 晶簇被普通破坏时掉落的物品 id（精准采集始终掉晶簇本体）；null = 什么都不掉。
          * 芽无论怎么破坏都只有精准采集才掉本体（与本模组自带的芽一致）。
+         * <p>
+         * 数量受时运加成：每一级额外给 0..等级 个，与自带晶簇的掉落表一致。
          */
         public @Nullable String dropItem = null;
-        /** {@link #dropItem} 的掉落数量（小于 1 按 1 处理） */
+        /** {@link #dropItem} 的掉落数量（小于 1 按 1 处理）；时运的加成会加在它上面 */
         public int dropCount = 1;
         /** 四个阶段的贴图，顺序：小芽 → 中芽 → 大芽 → 晶簇 */
         public String[] stageTextures = DEFAULT_STAGE_TEXTURES.clone();
