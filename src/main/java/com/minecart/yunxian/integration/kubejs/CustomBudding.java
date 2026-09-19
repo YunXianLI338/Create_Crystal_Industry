@@ -1,5 +1,7 @@
 package com.minecart.yunxian.integration.kubejs;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -49,6 +51,8 @@ import org.slf4j.LoggerFactory;
  * <p>
  * 默认贴图借用原版紫水晶那一套（零资源即可跑通），要自己的外观就改
  * {@link Options#buddingTexture} / {@link Options#stageTextures}，或者用资源包。
+ * 音效与开采工具同样默认照抄原版紫水晶（紫水晶音效、镐），要换就改
+ * {@link Options#buddingSound} / {@link Options#stageSound} / {@link Options#tool}。
  */
 public final class CustomBudding {
 
@@ -70,8 +74,15 @@ public final class CustomBudding {
 
     /** 通用母岩标签（与本模组自带母岩一致：智能钻头精准采集、AE2 晶体催生器都读它） */
     private static final ResourceLocation BUDDING_BLOCKS_TAG = ResourceLocation.fromNamespaceAndPath("c", "budding_blocks");
-    private static final ResourceLocation MINEABLE_PICKAXE_TAG =
-            ResourceLocation.withDefaultNamespace("mineable/pickaxe");
+
+    /**
+     * 认识的裸工具名——就是原版挖掘标签 {@code minecraft:mineable/<名字>} 的全部四个
+     * （1.21.1 的 {@code BlockTags} 里只有这四个 {@code MINEABLE_WITH_*}，没有"剪刀""剑"那两个标签）。
+     * <p>
+     * 写别的裸名字直接报错：拼错了只会安静地登记一个没人读的标签，症状是「设了工具但挖起来还是慢」，
+     * 比当场报错难查得多。要指向别的标签（如 {@code minecraft:sword_efficient}）就写完整 id，见 {@link #mineableTag}。
+     */
+    private static final List<String> VANILLA_TOOLS = List.of("pickaxe", "axe", "shovel", "hoe");
 
     /**
      * 阶段方块继承的原版模型 id（与上面的默认贴图同名，但语义是"模型"）：
@@ -101,6 +112,8 @@ public final class CustomBudding {
     public static Family create(RegistryKubeEvent<Block> event, String id, Options options) {
         ResourceLocation base = parse(id);
         String namespace = base.getNamespace();
+        // 开采工具在这儿先解析成标签：名字写错了要立刻报错，而不是等一族方块注册到一半才抛
+        @Nullable ResourceLocation toolTag = mineableTag(options.tool);
 
         // 四个阶段方块：建成模组自己的簇方块（见 StageBuilder），朝向形状、支撑判定、音效都是原版行为
         ResourceLocation[] stages = new ResourceLocation[STAGE_KEYS.length];
@@ -114,7 +127,7 @@ public final class CustomBudding {
             BlockBuilder builder = new StageBuilder(stageId, Stage.values()[i], options.stageTextures[i],
                     ResourceLocation.parse(STAGE_MODELS[i]));
             builder.sourceLine = SourceLine.UNKNOWN;
-            builder.soundType(SoundType.AMETHYST);
+            builder.soundType(options.stageSound);
             builder.renderType(BlockRenderType.CUTOUT);
             // 名字：不指定就交给 KubeJS 按 id 自动命名（snake_case 转英文标题，写进 en_us 虚拟语言文件）；
             // 方块物品与方块共用同一个语言键（BlockItemBuilder#getTranslationKeyGroup 返回 "block"），
@@ -123,7 +136,8 @@ public final class CustomBudding {
             if (stageName != null) {
                 builder.displayName(Component.literal(stageName));
             }
-            builder.tag(new ResourceLocation[]{MINEABLE_PICKAXE_TAG});
+            // 只挂方块标签：挖掘工具读的是方块标签，顺带挂到物品上是没用的空标签
+            tagTool(builder, toolTag);
             forceItem(builder, false);
             registerBlock(event, builder);
 
@@ -140,9 +154,10 @@ public final class CustomBudding {
         BlockBuilder budding = new MotherBuilder(buddingId, definition);
         budding.sourceLine = SourceLine.UNKNOWN;
         budding.texture(options.buddingTexture);
-        budding.soundType(SoundType.AMETHYST);
-        // 母岩本体：进通用母岩标签（方块）+ 可被镐挖掘；物品标签在下面 forceItem 里补
-        budding.tag(new ResourceLocation[]{BUDDING_BLOCKS_TAG, MINEABLE_PICKAXE_TAG});
+        budding.soundType(options.buddingSound);
+        // 母岩本体：进通用母岩标签（方块），物品标签在下面 forceItem 里补；开采工具与芽/簇同一个
+        budding.tagBlock(new ResourceLocation[]{BUDDING_BLOCKS_TAG});
+        tagTool(budding, toolTag);
         if (options.displayName != null) {
             budding.displayName(Component.literal(options.displayName));
         }
@@ -170,7 +185,10 @@ public final class CustomBudding {
      * 会替它建好，而我们是手工构造 builder，显式调用一次 {@code item(...)} 最稳妥
      * （物品建不出来时，方块存在但 {@code /give} 与创造栏都找不到，很难排查）。
      *
-     * @param buddingItem 母岩的物品要额外进通用母岩标签（方块标签在 {@code tag(...)} 里加了）
+     * @param buddingItem 母岩的物品要额外进通用母岩标签（对应的方块标签在 {@code tagBlock(...)} 里加了）
+     *                     <p>
+     *                     注意 KubeJS 的 {@code tag(...)} 会<b>同时</b>挂方块与物品标签，
+     *                     而挖掘标签只该挂在方块上，所以调用方用的是 {@code tagBlock(...)}。
      */
     private static void forceItem(BlockBuilder builder, boolean buddingItem) {
         builder.item(item -> {
@@ -178,6 +196,47 @@ public final class CustomBudding {
                 item.defaultTags.add(BUDDING_BLOCKS_TAG);
             }
         });
+    }
+
+    /**
+     * 脚本给的 {@link Options#tool} → 挖掘标签；{@code null} = 不登记（徒手最快）。
+     * <p>
+     * 裸名字（{@code "hoe"}）走原版的 {@code minecraft:mineable/<名字>}；含 {@code :} 的当完整标签 id
+     * 原样使用，所以也能指向其它模组的挖掘标签。前缀 {@code "mineable/"} 可省也可写——README 与文档里
+     * 这个标签是写作 {@code #minecraft:mineable/hoe} 的，照抄下来不该报错。
+     *
+     * @throws IllegalArgumentException 裸名字不在 {@link #VANILLA_TOOLS} 里，或写的不是合法 id
+     */
+    @Nullable
+    private static ResourceLocation mineableTag(@Nullable String tool) {
+        if (tool == null) {
+            return null;
+        }
+        String name = tool.trim();
+        if (name.indexOf(':') >= 0) {
+            ResourceLocation parsed = ResourceLocation.tryParse(name);
+            if (parsed == null) {
+                throw new IllegalArgumentException("不是合法的方块标签 id：" + tool);
+            }
+            return parsed;
+        }
+
+        String key = name.toLowerCase(Locale.ROOT);
+        if (key.startsWith("mineable/")) {
+            key = key.substring("mineable/".length());
+        }
+        if (!VANILLA_TOOLS.contains(key)) {
+            throw new IllegalArgumentException("未知的开采工具：" + tool + "（可用："
+                    + String.join(" / ", VANILLA_TOOLS) + "，或写完整的方块标签 id，如 \"mymod:mineable/wrench\"）");
+        }
+        return ResourceLocation.fromNamespaceAndPath("minecraft", "mineable/" + key);
+    }
+
+    /** 挂挖掘标签；{@code null} 就什么都不挂。只挂方块标签——挖掘工具读的一律是方块标签 */
+    private static void tagTool(BlockBuilder builder, @Nullable ResourceLocation toolTag) {
+        if (toolTag != null) {
+            builder.tagBlock(new ResourceLocation[]{toolTag});
+        }
     }
 
     /**
@@ -384,6 +443,31 @@ public final class CustomBudding {
         /** 母岩贴图 */
         public String buddingTexture = DEFAULT_BUDDING_TEXTURE;
         /**
+         * 母岩的破坏音效（破坏、踩踏、放置等一整套）；默认 {@link SoundType#AMETHYST}，即原版紫水晶母岩同款。
+         * <p>
+         * 脚本里写音效名即可（{@code 'stone'} / {@code 'crop'} / {@code 'glass'} / {@code 'wood'} / {@code 'empty'} …），
+         * 名字取自原版 {@code SoundType} 的字段名；写不认识的名字 KubeJS 会当场报错并列出全部可用名字。
+         */
+        public SoundType buddingSound = SoundType.AMETHYST;
+        /**
+         * 芽与晶簇的破坏音效；默认 {@link SoundType#AMETHYST}（原版紫水晶芽/簇同款）。
+         * <p>
+         * 四个阶段共用一个；写法与 {@link #buddingSound} 相同。
+         */
+        public SoundType stageSound = SoundType.AMETHYST;
+        /**
+         * 五个方块的开采工具，默认 {@code "pickaxe"}（镐，与原版紫水晶一致）。
+         * <p>
+         * 裸名字走原版那四个挖掘标签 {@code minecraft:mineable/<名字>}：{@code pickaxe} / {@code axe} /
+         * {@code shovel} / {@code hoe}；写别的裸名字会直接报错。
+         * 要指向别的标签就写完整 id（含 {@code :}，如 {@code "mymod:mineable/wrench"}）。
+         * 设成 {@code null} = 一个标签都不挂，徒手就是最快（任何工具都没有加成）。
+         * <p>
+         * 只是登记挖掘标签（决定"用什么挖最快"），<b>不</b>改挖掘等级（{@code needs_*_tool}）——
+         * 与原版紫水晶一样，任何工具都挖得下来，掉落规则见 {@link #dropItem}。
+         */
+        public @Nullable String tool = "pickaxe";
+        /**
          * 晶簇被普通破坏时掉落的物品 id（精准采集始终掉晶簇本体）；null = 什么都不掉。
          * 芽无论怎么破坏都只有精准采集才掉本体（与本模组自带的芽一致）。
          * <p>
@@ -460,6 +544,24 @@ public final class CustomBudding {
 
         public Options buddingTexture(String buddingTexture) {
             this.buddingTexture = buddingTexture;
+            return this;
+        }
+
+        /** 母岩的破坏音效；写音效名（{@code 'stone'} / {@code 'crop'} …，见 {@link #buddingSound}） */
+        public Options buddingSound(SoundType buddingSound) {
+            this.buddingSound = buddingSound;
+            return this;
+        }
+
+        /** 芽与晶簇的破坏音效；写音效名（{@code 'stone'} / {@code 'crop'} …，见 {@link #stageSound}） */
+        public Options stageSound(SoundType stageSound) {
+            this.stageSound = stageSound;
+            return this;
+        }
+
+        /** 开采工具；裸工具名或完整标签 id，{@code null} = 不挂标签（见 {@link #tool}） */
+        public Options tool(@Nullable String tool) {
+            this.tool = tool;
             return this;
         }
 
