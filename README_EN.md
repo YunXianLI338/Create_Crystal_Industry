@@ -127,8 +127,10 @@ StartupEvents.registry('block', event => {
   // const opts = new CustomBuddingOptions(), then opts.chance = 20 …, then create(event, id, opts).
   const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
     .chance(20)                                  // 1-in-20 per random tick to advance one stage (default 5)
-    .maxLight(7)                                 // light limit for the growth spot, 0-15; negative = unlimited (default -1)
-    .minLight(1)                                 // minimum light for the growth spot, 0-15; negative = unlimited (default -1); must not exceed maxLight
+    .maxLight(7)                                 // light ceiling for the growth spot, 0-15; negative = unlimited (default -1)
+    .minLight(1)                                 // light floor for the growth spot, 0-15; negative = unlimited (default -1)
+                                                 // both lines = only light 1-7 advances; one line = only that end is constrained
+                                                 // (Echo-style "must be pitch dark" is just .maxLight(0)); min above max is rejected
     .requiresWater(false)                        // false = no water needed (default); flammable-ice style is .requiresWater()
     .displayName('Example Budding Block')        // omit to let KubeJS name it from the id
     .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // names of the four buds/cluster, small → medium → large → cluster; null keeps that one automatic

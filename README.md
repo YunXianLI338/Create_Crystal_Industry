@@ -123,7 +123,9 @@ StartupEvents.registry('block', event => {
   const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
     .chance(20)                                  // 每次随机刻有 1/20 的概率往上长一级（默认 5）
     .maxLight(7)                                 // 生长位亮度上限 0–15；负数 = 不限（默认 -1）
-    .minLight(1)                                 // 生长位亮度下限 0–15；负数 = 不限（默认 -1）。与上限构成闭区间，下限高于上限会直接报错
+    .minLight(1)                                 // 生长位亮度下限 0–15；负数 = 不限（默认 -1）
+                                                 // 两行一起写 = 只有亮度 1–7 才推进；只写一行 = 只管那一端
+                                                 // （回响那种「必须全黑」就是只写 .maxLight(0)）；下限高于上限会直接报错
     .requiresWater(false)                        // 默认 false = 不需要水；可燃冰式写 .requiresWater()（目标格必须是水源）
     .displayName('示例母岩')                      // 不写就交给 KubeJS 按 id 自动命名
     .stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇；某一项传 null 就保持自动命名
