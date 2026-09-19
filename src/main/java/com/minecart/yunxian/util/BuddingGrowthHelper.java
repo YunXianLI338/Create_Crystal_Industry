@@ -144,6 +144,10 @@ public final class BuddingGrowthHelper {
 
         addLine(tooltip, "create_crystal_industry.goggles.scripted.chance", definition.chance());
 
+        if (definition.minLight().isPresent()) {
+            addLine(tooltip, "create_crystal_industry.goggles.scripted.min_light",
+                    definition.minLight().getAsInt());
+        }
         if (definition.maxLight().isPresent()) {
             addLine(tooltip, "create_crystal_industry.goggles.scripted.max_light",
                     definition.maxLight().getAsInt());

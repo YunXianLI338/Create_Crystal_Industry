@@ -123,6 +123,7 @@ StartupEvents.registry('block', event => {
   const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
     .chance(20)                                  // 每次随机刻有 1/20 的概率往上长一级（默认 5）
     .maxLight(7)                                 // 生长位亮度上限 0–15；负数 = 不限（默认 -1）
+    .minLight(1)                                 // 生长位亮度下限 0–15；负数 = 不限（默认 -1）。与上限构成闭区间，下限高于上限会直接报错
     .requiresWater(false)                        // 默认 false = 不需要水；可燃冰式写 .requiresWater()（目标格必须是水源）
     .displayName('示例母岩')                      // 不写就交给 KubeJS 按 id 自动命名
     .stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇；某一项传 null 就保持自动命名
@@ -164,6 +165,13 @@ const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDef
 // 自己的方块 + 自己指定的四个阶段方块（原版紫水晶芽、本模组的芽/簇、你注册的方块都行）
 const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
                                        'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
+
+// 光照与含水也可以一并给出（都是可选参数；亮度 0–15，负数 = 那一端不限制）：
+//   of(小, 中, 大, 簇, n, 亮度上限, 需要水源)          —— 只管上限
+//   of(小, 中, 大, 簇, n, 亮度上限, 亮度下限, 需要水源)  —— 上下限构成闭区间，下限不能高于上限
+// const dim = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
+//                                 'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster',
+//                                 20, 7, 1, false)   // 生长位亮度 1–7 才推进
 
 event.create('my_budding').randomTick(ctx => {
   BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
@@ -232,7 +240,8 @@ BuddingRegistration.declareGrowthDefinition(myBudding.get(),
 
 见上一节「加自己的母岩（KubeJS）」：装机后脚本里一行 `CustomBudding.create(event, 'my_crystal', 20)`
 就注册出整族五个方块（本模组的 KubeJS 插件提供的绑定）；
-要自己拼低阶方块时可用 `GrowthDefinition.of(小芽, 中芽, 大芽, 晶簇, n)` + 引擎。
+要自己拼低阶方块时可用 `GrowthDefinition.of(小芽, 中芽, 大芽, 晶簇, n)` + 引擎
+（后面还能再补光照上下限与含水要求，见上一节的示例）。
 可跑的完整示例见「加自己的母岩（KubeJS）」一节；本地开发目录里另有一份
 `run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
 

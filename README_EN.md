@@ -128,6 +128,7 @@ StartupEvents.registry('block', event => {
   const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
     .chance(20)                                  // 1-in-20 per random tick to advance one stage (default 5)
     .maxLight(7)                                 // light limit for the growth spot, 0-15; negative = unlimited (default -1)
+    .minLight(1)                                 // minimum light for the growth spot, 0-15; negative = unlimited (default -1); must not exceed maxLight
     .requiresWater(false)                        // false = no water needed (default); flammable-ice style is .requiresWater()
     .displayName('Example Budding Block')        // omit to let KubeJS name it from the id
     .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // names of the four buds/cluster, small → medium → large → cluster; null keeps that one automatic
@@ -172,6 +173,13 @@ const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDef
 // your own block + whatever four stage blocks you like (vanilla buds, this mod's, your own)
 const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
                                        'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
+
+// Light and water requirements are optional extras (light 0-15, negative = that end unlimited):
+//   of(small, medium, large, cluster, n, maxLight, requiresWater)          -- ceiling only
+//   of(small, medium, large, cluster, n, maxLight, minLight, requiresWater) -- a closed range; min must not exceed max
+// const dim = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
+//                                 'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster',
+//                                 20, 7, 1, false)   // advances only at light 1-7
 
 event.create('my_budding').randomTick(ctx => {
   BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
@@ -245,7 +253,8 @@ the case for script registration).
 See "Adding Your Own Budding Blocks (KubeJS)" above: with KubeJS installed, one line —
 `CustomBudding.create(event, 'my_crystal', 20)` — registers the whole five-block family (the binding comes from
 this mod's KubeJS plugin). For hand-rolled blocks, use
-`GrowthDefinition.of(small, medium, large, cluster, n)` plus the engine.
+`GrowthDefinition.of(small, medium, large, cluster, n)` plus the engine (optional light bounds and a water
+requirement can be appended — see the example above).
 See the complete example in the "Adding Your Own Budding Blocks (KubeJS)" section; a local dev copy lives at
 `run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
 

@@ -264,6 +264,9 @@ public final class BuddingInfoCollector {
     /** 生长定义（脚本/外部声明）里的生长条件，与家族定义共用同一套文案键 */
     private static List<Row> conditions(GrowthDefinition definition) {
         List<Row> rows = new ArrayList<>(2);
+        if (definition.minLight().isPresent()) {
+            rows.add(Row.line(Component.translatable(LANG + "growth.light.min", definition.minLight().getAsInt())));
+        }
         if (definition.maxLight().isPresent()) {
             rows.add(Row.line(Component.translatable(LANG + "growth.light", definition.maxLight().getAsInt())));
         }

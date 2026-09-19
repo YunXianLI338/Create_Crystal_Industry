@@ -361,6 +361,8 @@ public final class CustomBudding {
         public int chance = 5;
         /** 生长位允许的最大亮度（0–15）；负数 = 不限制 */
         public int maxLight = -1;
+        /** 生长位要求的最低亮度（0–15）；负数 = 不限制。不能高于 {@link #maxLight}，否则永远长不出来 */
+        public int minLight = -1;
         /** 目标格必须含水（可燃冰式） */
         public boolean requiresWater = false;
         /** 母岩的显示名；null = 交给 KubeJS 按 id 自动命名 */
@@ -400,6 +402,11 @@ public final class CustomBudding {
 
         public Options maxLight(int maxLight) {
             this.maxLight = maxLight;
+            return this;
+        }
+
+        public Options minLight(int minLight) {
+            this.minLight = minLight;
             return this;
         }
 
@@ -474,6 +481,7 @@ public final class CustomBudding {
         private final ResourceLocation[] stages;
         private final int chance;
         private final int maxLight;
+        private final int minLight;
         private final boolean requiresWater;
 
         private GrowthDefinition cached;
@@ -483,6 +491,7 @@ public final class CustomBudding {
             // 选项只在注册时读一次，之后脚本再改 Options 不影响这个家族
             this.chance = options.chance;
             this.maxLight = options.maxLight;
+            this.minLight = options.minLight;
             this.requiresWater = options.requiresWater;
         }
 
@@ -491,7 +500,8 @@ public final class CustomBudding {
             GrowthDefinition definition = cached;
             if (definition == null) {
                 definition = GrowthDefinition.of(stages[0].toString(), stages[1].toString(),
-                        stages[2].toString(), stages[3].toString(), chance, maxLight, requiresWater);
+                        stages[2].toString(), stages[3].toString(), chance, maxLight, minLight,
+                        requiresWater);
                 cached = definition;
             }
             return definition;
