@@ -137,7 +137,10 @@ StartupEvents.registry('block', event => {
                    'mypack:block/my_cluster')
     .buddingSound('stone')                       // 母岩的破坏音效，写原版音效名（'stone' / 'crop' / 'glass' / 'wood' …）；默认 'amethyst'
     .stageSound('crop')                          // 芽与晶簇的破坏音效，四个阶段共用一个；默认 'amethyst'
-    .tool('hoe')                                 // 开采工具，五个方块共用：pickaxe / axe / shovel / hoe（或完整标签 id）；默认 'pickaxe'
+    .buddingTool('axe')                          // 母岩的开采工具：pickaxe / axe / shovel / hoe（或完整标签 id）；默认 'pickaxe'
+    .stageTool('pickaxe')                        // 芽与晶簇的开采工具，四个阶段共用一个；写法同上
+    .buddingLevel('stone')                       // 母岩的开采等级：stone / iron / diamond，'none'（或 null、不写）= 不设等级
+    .stageLevel('stone')                         // 芽与晶簇的开采等级，四个阶段共用一个；写法同上
     .group('building_blocks'))                   // 创造栏：默认 'kubejs'，null = 不进任何页（只能 /give）
 
   // family 里是五个方块 id，接着写配方 / 标签 / 掉落表都行（取法见下面的说明）
@@ -147,13 +150,22 @@ StartupEvents.registry('block', event => {
 - **名字**：母岩用 `displayName('示例母岩')`；四个芽/簇默认是 KubeJS 按 id 生成的英文标题（`example_crystal_small_bud` → "Example Crystal Small Bud"），要改就 `stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')`——顺序是小 → 中 → 大 → 簇，某一项传 `null` 就那一项保持自动命名，可以只给其中几个起名。方块物品与方块共用一个名字，背包、掉落物、创造栏会一起变。
 - **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
-- **音效与开采工具也默认照抄原版紫水晶**（紫水晶破坏音效、镐）：
+- **音效、开采工具与开采等级也默认照抄原版紫水晶**（紫水晶破坏音效、镐、不设等级）：
   - 破坏音效写**原版音效名**——`buddingSound('stone')` 只管母岩，`stageSound('crop')` 管四个芽/簇（共用一个）；
     可用名字就是原版 `SoundType` 的字段名，写不认识的名字 KubeJS 会当场报错并列出全部可用名字。
-  - `tool('hoe')` 决定**用什么挖最快**，五个方块共用：写 `pickaxe` / `axe` / `shovel` / `hoe` 之一
+  - **开采工具**（决定**用什么挖最快**）按母岩、芽簇分成两份：`buddingTool('axe')` 只管母岩，
+    `stageTool('pickaxe')` 管四个芽/簇（共用一个）。可写 `pickaxe` / `axe` / `shovel` / `hoe` 之一
     （这是原版挖掘标签 `#minecraft:mineable/*` 的全部四个；写别的裸名字会当场报错，不让你踩"登记了一个没人读的标签"的坑），
-    也可以写完整的方块标签 id（含 `:`，如 `'mymod:mineable/wrench'`）；`tool(null)` 则一个标签都不挂，徒手就是最快。
-  - 它只管挖掘标签，**不设挖掘等级**（`needs_stone_tool` 之类）——与原版紫水晶一样，任何工具都挖得下来、掉落照下面的规则走。
+    也可以写完整的方块标签 id（含 `:`，如 `'mymod:mineable/wrench'`）；写 `null` 则一个标签都不挂，徒手就是最快。
+    想让五个方块共用一个工具，老的合并写法 `tool('hoe')` 仍然可用——它就是这两份一起设。
+  - **开采等级**（决定**什么工具才拿得到掉落**）同样分两份：`buddingLevel('stone')` 只管母岩，
+    `stageLevel('stone')` 管四个芽/簇。裸名字取原版三档挖掘等级标签 `#minecraft:needs_<名字>_tool`：
+    `'stone'` / `'iron'` / `'diamond'`（写别的裸名字当场报错），也可以写完整标签 id
+    （如 `'neoforge:needs_netherite_tool'`）；**不写**或写 `'none'` = 不设等级。
+    设了等级会连带给方块加上 `requiresCorrectToolForDrops`（只挂标签是没人读的），所以设完之后：
+    **等级不够的工具挖下来什么都不掉**（精准采集也一起没了），而且**工具种类必须对**——
+    母岩设成斧头 + `'stone'` 时，石斧掉、石镐不掉。想要"徒手也能拿到掉落"就别设等级
+    （默认就是这样，与本模组自带的芽/簇一致）。
 - 注册出来的方块默认进**创造模式「KubeJS」那一页**（KubeJS 的方块本来不进任何标签页，容易让人以为没注册成功）；
   `group(...)` 可以换成原版页（`'building_blocks'` 等，用 id 里的下划线写法），`.group(null)` 就完全不进标签页、只能用 `/give` 取。
 - **掉落**：芽只有**精准采集**才掉本体；晶簇普通破坏掉 `dropItem(物品, 数量)` 指定的东西（默认什么都不掉，
@@ -161,7 +173,7 @@ StartupEvents.registry('block', event => {
 - 返回值 `family` 里有五个方块 id，用 record 访问器取：`family.budding()` / `family.smallBud()` /
   `family.mediumBud()` / `family.largeBud()` / `family.cluster()`——是**方法调用，括号不能省**，
   写成 `family.budding` 拿到的是方法对象而不是 id。方便接着写配方、标签、掉落表。
-- **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块按 `tool(...)` 进对应的挖掘标签（默认 `#minecraft:mineable/pickaxe`，只挂方块、不挂物品）——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
+- **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块按 `buddingTool(...)` / `stageTool(...)` 进对应的挖掘标签、按 `buddingLevel(...)` / `stageLevel(...)` 进对应的等级标签（默认只有 `#minecraft:mineable/pickaxe`，不挂等级；一律只挂方块、不挂物品）——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
 - 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
 
 ### 已知限制

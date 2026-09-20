@@ -142,7 +142,10 @@ StartupEvents.registry('block', event => {
                    'mypack:block/my_cluster')
     .buddingSound('stone')                       // break sound of the budding block, a vanilla sound name ('stone' / 'crop' / 'glass' / 'wood' …); default 'amethyst'
     .stageSound('crop')                          // break sound of the buds/cluster, shared by all four stages; default 'amethyst'
-    .tool('hoe')                                 // mining tool, shared by all five blocks: pickaxe / axe / shovel / hoe (or a full tag id); default 'pickaxe'
+    .buddingTool('axe')                          // mining tool of the budding block: pickaxe / axe / shovel / hoe (or a full tag id); default 'pickaxe'
+    .stageTool('pickaxe')                        // mining tool of the buds/cluster, shared by all four stages
+    .buddingLevel('stone')                       // harvest tier of the budding block: stone / iron / diamond; 'none' (or null, or omitting) = no tier
+    .stageLevel('stone')                         // harvest tier of the buds/cluster, shared by all four stages
     .group('building_blocks'))                   // creative tab: 'kubejs' by default; null = no tab at all (only /give)
 
   // family holds the five block ids (see the notes below for how to read them),
@@ -154,16 +157,26 @@ StartupEvents.registry('block', event => {
 - **Goggles**: point Create Goggles at your budding block and the panel shows the current growth speed plus the growth chance / light requirement / water requirement you configured (this mod's own families only show the speed line).
 - **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
   ship a resource pack for your own art.
-- **Sounds and mining tool default to vanilla amethyst's too** (amethyst break sound, pickaxe):
+- **Sounds, mining tools and harvest tiers all default to vanilla amethyst's too** (amethyst break sound, pickaxe,
+  no tier):
   - Break sounds are written as **vanilla sound names** — `buddingSound('stone')` covers the budding block only,
     `stageSound('crop')` covers the four buds/cluster (one sound for all of them). The valid names are the field
     names of vanilla `SoundType`; an unknown name makes KubeJS fail on the spot and list every valid one.
-  - `tool('hoe')` decides **what mines it fastest**, shared by all five blocks: one of `pickaxe` / `axe` / `shovel` /
-    `hoe` — the four vanilla mining tags `#minecraft:mineable/*` there are (any other bare name is rejected on the spot,
-    so you can't silently register a tag nobody reads) — or a full block tag id (containing `:`, e.g.
-    `'mymod:mineable/wrench'`). `tool(null)` registers no tag at all, so bare hands are fastest.
-  - It only sets the mining tag and **no harvest tier** (`needs_stone_tool` etc.) — like vanilla amethyst, any tool
-    mines it and the drops follow the rules below.
+  - **Mining tools** (which decide **what mines it fastest**) come in two: `buddingTool('axe')` is the budding block's,
+    `stageTool('pickaxe')` covers the four buds/cluster (one tool for all of them). Each is one of `pickaxe` / `axe` /
+    `shovel` / `hoe` — the four vanilla mining tags `#minecraft:mineable/*` there are (any other bare name is rejected
+    on the spot, so you can't silently register a tag nobody reads) — or a full block tag id (containing `:`, e.g.
+    `'mymod:mineable/wrench'`). `null` registers no tag at all, so bare hands are fastest. The old combined
+    `tool('hoe')` still works and simply sets both of them.
+  - **Harvest tiers** (which decide **what tool can get the drops**) are split the same way: `buddingLevel('stone')`
+    is the budding block's, `stageLevel('stone')` covers the four buds/cluster. A bare name is one of the three
+    vanilla tier tags `#minecraft:needs_<name>_tool`: `'stone'` / `'iron'` / `'diamond'` (any other bare name is
+    rejected), or a full tag id (e.g. `'neoforge:needs_netherite_tool'`); leaving it out or writing `'none'`
+    means no tier. Setting a tier also adds `requiresCorrectToolForDrops` to the block (a tag alone is read by
+    nobody), so once it is set: **a tool below the tier gets no drops at all** (silk touch included), and **the tool
+    type has to match too** — with the budding block set to axe + `'stone'`, a stone axe drops it and a stone
+    pickaxe does not. Leave the tier unset to keep "bare hands still get the drops" (the default, and how this
+    mod's own buds/cluster behave).
 - The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
   otherwise, which makes it look like registration failed). `group(...)` can point at a vanilla tab
   (`'building_blocks'`, …); `.group(null)` keeps them out of every tab (then only `/give` gets them).
@@ -174,7 +187,7 @@ StartupEvents.registry('block', event => {
   `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
   the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy for
   recipes, tags and loot tables.
-- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join the mining tag picked by `tool(...)` (default `#minecraft:mineable/pickaxe`; blocks only, never the items) — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
+- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join the mining tag picked by `buddingTool(...)` / `stageTool(...)` plus the tier tag picked by `buddingLevel(...)` / `stageLevel(...)` (by default just `#minecraft:mineable/pickaxe` and no tier; blocks only, never the items) — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
 - Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
 
 ### Known limitations

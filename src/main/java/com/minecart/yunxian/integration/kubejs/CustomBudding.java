@@ -51,8 +51,9 @@ import org.slf4j.LoggerFactory;
  * <p>
  * 默认贴图借用原版紫水晶那一套（零资源即可跑通），要自己的外观就改
  * {@link Options#buddingTexture} / {@link Options#stageTextures}，或者用资源包。
- * 音效与开采工具同样默认照抄原版紫水晶（紫水晶音效、镐），要换就改
- * {@link Options#buddingSound} / {@link Options#stageSound} / {@link Options#tool}。
+ * 音效、开采工具与开采等级同样默认照抄原版紫水晶（紫水晶音效、镐、不设等级），要换就改
+ * {@link Options#buddingSound} / {@link Options#stageSound} / {@link Options#buddingTool} /
+ * {@link Options#stageTool} / {@link Options#buddingLevel} / {@link Options#stageLevel}。
  */
 public final class CustomBudding {
 
@@ -85,6 +86,18 @@ public final class CustomBudding {
     private static final List<String> VANILLA_TOOLS = List.of("pickaxe", "axe", "shovel", "hoe");
 
     /**
+     * 认识的裸等级名——原版三档挖掘等级标签 {@code minecraft:needs_<名字>_tool}，与本模组自带的
+     * {@code BuddingFamily.ToolTier} 一一对应。
+     * <p>
+     * 写别的裸名字直接报错（理由同 {@link #VANILLA_TOOLS}）。原版没有 wood/gold 档，NeoForge 的
+     * {@code neoforge:needs_netherite_tool} 也不在这里——要指向那些就写完整 id，见 {@link #levelTag}。
+     */
+    private static final List<String> VANILLA_LEVELS = List.of("stone", "iron", "diamond");
+
+    /** 等级写成这个（不区分大小写）= 不设等级，与写 {@code null} 等价；脚本里比 {@code null} 好读 */
+    private static final String NO_LEVEL = "none";
+
+    /**
      * 阶段方块继承的原版模型 id（与上面的默认贴图同名，但语义是"模型"）：
      * 借它们才拿到芽/簇该有的 cross 几何与尺寸，而不是一个整块立方体。
      */
@@ -112,8 +125,11 @@ public final class CustomBudding {
     public static Family create(RegistryKubeEvent<Block> event, String id, Options options) {
         ResourceLocation base = parse(id);
         String namespace = base.getNamespace();
-        // 开采工具在这儿先解析成标签：名字写错了要立刻报错，而不是等一族方块注册到一半才抛
-        @Nullable ResourceLocation toolTag = mineableTag(options.tool);
+        // 开采工具与开采等级都在这儿先解析成标签：名字写错了要立刻报错，而不是等一族方块注册到一半才抛
+        @Nullable ResourceLocation buddingToolTag = mineableTag(options.buddingTool);
+        @Nullable ResourceLocation stageToolTag = mineableTag(options.stageTool);
+        @Nullable ResourceLocation buddingLevelTag = levelTag(options.buddingLevel);
+        @Nullable ResourceLocation stageLevelTag = levelTag(options.stageLevel);
 
         // 四个阶段方块：建成模组自己的簇方块（见 StageBuilder），朝向形状、支撑判定、音效都是原版行为
         ResourceLocation[] stages = new ResourceLocation[STAGE_KEYS.length];
@@ -136,8 +152,9 @@ public final class CustomBudding {
             if (stageName != null) {
                 builder.displayName(Component.literal(stageName));
             }
-            // 只挂方块标签：挖掘工具读的是方块标签，顺带挂到物品上是没用的空标签
-            tagTool(builder, toolTag);
+            // 只挂方块标签：挖掘工具与开采等级读的都是方块标签，顺带挂到物品上是没用的空标签
+            tagTool(builder, stageToolTag);
+            tagLevel(builder, stageLevelTag);
             forceItem(builder, false);
             registerBlock(event, builder);
 
@@ -155,9 +172,10 @@ public final class CustomBudding {
         budding.sourceLine = SourceLine.UNKNOWN;
         budding.texture(options.buddingTexture);
         budding.soundType(options.buddingSound);
-        // 母岩本体：进通用母岩标签（方块），物品标签在下面 forceItem 里补；开采工具与芽/簇同一个
+        // 母岩本体：进通用母岩标签（方块），物品标签在下面 forceItem 里补；开采工具与等级用母岩自己那份
         budding.tagBlock(new ResourceLocation[]{BUDDING_BLOCKS_TAG});
-        tagTool(budding, toolTag);
+        tagTool(budding, buddingToolTag);
+        tagLevel(budding, buddingLevelTag);
         if (options.displayName != null) {
             budding.displayName(Component.literal(options.displayName));
         }
@@ -199,7 +217,7 @@ public final class CustomBudding {
     }
 
     /**
-     * 脚本给的 {@link Options#tool} → 挖掘标签；{@code null} = 不登记（徒手最快）。
+     * 脚本给的 {@link Options#buddingTool} / {@link Options#stageTool} → 挖掘标签；{@code null} = 不登记（徒手最快）。
      * <p>
      * 裸名字（{@code "hoe"}）走原版的 {@code minecraft:mineable/<名字>}；含 {@code :} 的当完整标签 id
      * 原样使用，所以也能指向其它模组的挖掘标签。前缀 {@code "mineable/"} 可省也可写——README 与文档里
@@ -237,6 +255,68 @@ public final class CustomBudding {
         if (toolTag != null) {
             builder.tagBlock(new ResourceLocation[]{toolTag});
         }
+    }
+
+    /**
+     * 脚本给的 {@link Options#buddingLevel} / {@link Options#stageLevel} → 开采等级标签；
+     * {@code null}（或写 {@code "none"}）= 不设等级。
+     * <p>
+     * 裸名字（{@code "stone"}）走原版的 {@code minecraft:needs_<名字>_tool}；含 {@code :} 的当完整标签 id
+     * 原样使用，所以也能指向别的标签（如 NeoForge 的 {@code neoforge:needs_netherite_tool}）。前缀
+     * {@code "needs_"}、后缀 {@code "_tool"} 可省也可写——照抄标签名下来不该报错。
+     * <p>
+     * <b>解析出来只是标签，真正让等级生效的是 {@link #tagLevel} 顺手设的 {@code requiresCorrectToolForDrops}</b>。
+     *
+     * @throws IllegalArgumentException 裸名字不在 {@link #VANILLA_LEVELS} 里（也不是 {@code "none"}），
+     *                                  或写的不是合法 id
+     */
+    @Nullable
+    private static ResourceLocation levelTag(@Nullable String level) {
+        if (level == null) {
+            return null;
+        }
+        String name = level.trim();
+        if (name.isEmpty() || name.equalsIgnoreCase(NO_LEVEL)) {
+            return null;
+        }
+        if (name.indexOf(':') >= 0) {
+            ResourceLocation parsed = ResourceLocation.tryParse(name);
+            if (parsed == null) {
+                throw new IllegalArgumentException("不是合法的方块标签 id：" + level);
+            }
+            return parsed;
+        }
+
+        String key = name.toLowerCase(Locale.ROOT);
+        if (key.startsWith("needs_")) {
+            key = key.substring("needs_".length());
+        }
+        if (key.endsWith("_tool")) {
+            key = key.substring(0, key.length() - "_tool".length());
+        }
+        if (!VANILLA_LEVELS.contains(key)) {
+            throw new IllegalArgumentException("未知的开采等级：" + level + "（可用："
+                    + String.join(" / ", VANILLA_LEVELS) + " / " + NO_LEVEL
+                    + "，或写完整的方块标签 id，如 \"neoforge:needs_netherite_tool\"）");
+        }
+        return ResourceLocation.withDefaultNamespace("needs_" + key + "_tool");
+    }
+
+    /**
+     * 挂开采等级标签，并顺手把方块变成「必须用对工具才掉落」。两步缺一不可：
+     * {@code needs_*_tool} 只描述等级，掉落判定读的是方块自己的 {@code requiresCorrectToolForDrops}
+     * （见 {@code Player#hasCorrectToolForDrops}）——不设它的话等级标签就是个没人读的空标签，
+     * 症状正是「设了等级但挖起来什么都没变」。
+     * <p>
+     * 副作用是工具种类也成了硬要求：母岩设成斧头 + {@code "stone"} 之后，石镐挖下来同样什么都不掉
+     * （这正是原版「石头必须用镐」的规则，说清楚了就不算意外）。
+     */
+    private static void tagLevel(BlockBuilder builder, @Nullable ResourceLocation levelTag) {
+        if (levelTag == null) {
+            return;
+        }
+        builder.requiresTool(true);
+        builder.tagBlock(new ResourceLocation[]{levelTag});
     }
 
     /**
@@ -456,17 +536,36 @@ public final class CustomBudding {
          */
         public SoundType stageSound = SoundType.AMETHYST;
         /**
-         * 五个方块的开采工具，默认 {@code "pickaxe"}（镐，与原版紫水晶一致）。
+         * 母岩的开采工具，默认 {@code "pickaxe"}（镐，与原版紫水晶一致）。
          * <p>
          * 裸名字走原版那四个挖掘标签 {@code minecraft:mineable/<名字>}：{@code pickaxe} / {@code axe} /
          * {@code shovel} / {@code hoe}；写别的裸名字会直接报错。
          * 要指向别的标签就写完整 id（含 {@code :}，如 {@code "mymod:mineable/wrench"}）。
          * 设成 {@code null} = 一个标签都不挂，徒手就是最快（任何工具都没有加成）。
          * <p>
-         * 只是登记挖掘标签（决定"用什么挖最快"），<b>不</b>改挖掘等级（{@code needs_*_tool}）——
-         * 与原版紫水晶一样，任何工具都挖得下来，掉落规则见 {@link #dropItem}。
+         * 只管"用什么挖最快"，"要什么等级才掉"看 {@link #buddingLevel}。四个芽/簇另有一份，
+         * 见 {@link #stageTool}；一次设两边用 {@link #tool}。
          */
-        public @Nullable String tool = "pickaxe";
+        public @Nullable String buddingTool = "pickaxe";
+        /** 芽与晶簇的开采工具，四个阶段共用一个；写法与 {@link #buddingTool} 完全相同 */
+        public @Nullable String stageTool = "pickaxe";
+        /**
+         * 母岩的开采等级，默认 {@code null} = 不设等级（与原版紫水晶一样，任何工具、甚至徒手都能拿到掉落）。
+         * <p>
+         * 裸名字走原版三档挖掘等级标签 {@code minecraft:needs_<名字>_tool}：{@code "stone"} / {@code "iron"} /
+         * {@code "diamond"}；{@code "none"} 或 {@code null} = 不设等级。<b>写别的裸名字会直接报错</b>。
+         * 要指向别的标签就写完整 id（含 {@code :}，如 {@code "neoforge:needs_netherite_tool"}）。
+         * <p>
+         * 设了等级会连带给方块加上 {@code requiresCorrectToolForDrops}（只挂标签没人读，见 {@code tagLevel}），
+         * 于是设完之后：<b>等级不够的工具挖下来什么都不掉</b>（含精准采集——掉落判定整段被跳过），
+         * 而且<b>工具种类也必须对</b>：母岩的工具是斧头（{@link #buddingTool}）+ 等级 {@code "stone"} 时，
+         * 石斧掉、石镐不掉。想要"徒手也能捡"就别设等级。
+         * <p>
+         * 芽与晶簇另有一份，见 {@link #stageLevel}。
+         */
+        public @Nullable String buddingLevel = null;
+        /** 芽与晶簇的开采等级，四个阶段共用一个；写法与 {@link #buddingLevel} 完全相同 */
+        public @Nullable String stageLevel = null;
         /**
          * 晶簇被普通破坏时掉落的物品 id（精准采集始终掉晶簇本体）；null = 什么都不掉。
          * 芽无论怎么破坏都只有精准采集才掉本体（与本模组自带的芽一致）。
@@ -559,9 +658,34 @@ public final class CustomBudding {
             return this;
         }
 
-        /** 开采工具；裸工具名或完整标签 id，{@code null} = 不挂标签（见 {@link #tool}） */
+        /** 五个方块共用同一个开采工具：等价于 {@link #buddingTool} 与 {@link #stageTool} 都设成它 */
         public Options tool(@Nullable String tool) {
-            this.tool = tool;
+            this.buddingTool = tool;
+            this.stageTool = tool;
+            return this;
+        }
+
+        /** 母岩的开采工具；裸工具名或完整标签 id，{@code null} = 不挂标签（见 {@link #buddingTool}） */
+        public Options buddingTool(@Nullable String buddingTool) {
+            this.buddingTool = buddingTool;
+            return this;
+        }
+
+        /** 芽与晶簇的开采工具；写法与 {@link #buddingTool} 相同 */
+        public Options stageTool(@Nullable String stageTool) {
+            this.stageTool = stageTool;
+            return this;
+        }
+
+        /** 母岩的开采等级；{@code "stone"} / {@code "iron"} / {@code "diamond"}，{@code "none"} = 不设（见 {@link #buddingLevel}） */
+        public Options buddingLevel(@Nullable String buddingLevel) {
+            this.buddingLevel = buddingLevel;
+            return this;
+        }
+
+        /** 芽与晶簇的开采等级；写法与 {@link #buddingLevel} 相同 */
+        public Options stageLevel(@Nullable String stageLevel) {
+            this.stageLevel = stageLevel;
             return this;
         }
 
