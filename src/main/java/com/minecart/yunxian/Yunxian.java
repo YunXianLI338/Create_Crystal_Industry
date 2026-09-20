@@ -41,6 +41,8 @@ public class Yunxian {
         modEventBus.addListener(ModCreativeTabs::addScriptedEntries);
         // 脚本注册的芽/簇的掉落规则（精准采集掉本体、否则掉配置物品）：KubeJS 的掉落 API 表达不了，运行时接管
         NeoForge.EVENT_BUS.addListener(ScriptedBlockDrops::onBlockDrops);
+        // 玩家亲手挖掉一颗完整晶簇 → 「它真的会长」（按方块判，见 YunxianAdvancements.isCluster）
+        NeoForge.EVENT_BUS.addListener(YunxianAdvancements::onBlockBroken);
         modEventBus.addListener(Yunxian::commonSetup);
         ModRenderers.register(modEventBus);
         ModFeatures.register(modEventBus);

@@ -3,6 +3,7 @@ package com.minecart.yunxian.advancement;
 import java.util.function.Predicate;
 
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.block.budding.YunxianClusterBlock;
 import com.minecart.yunxian.budding.GrowthDefinition;
 
 import net.minecraft.advancements.AdvancementHolder;
@@ -13,9 +14,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 成就的授予入口。
@@ -43,6 +47,7 @@ public final class YunxianAdvancements {
 
     // ==================== 成就 id（只列代码授予的那些；纯 JSON 触发的写在这里没有意义） ====================
 
+    public static final String BUDDING_FIRST_CLUSTER = "budding/first_cluster";
     public static final String BUDDING_MOTHERLODE = "budding/motherlode";
 
     public static final String ACCEL_RUNNING = "accel/running";
@@ -159,6 +164,33 @@ public final class YunxianAdvancements {
             }
         }
         return false;
+    }
+
+    // ==================== 采下一颗完整晶簇 ====================
+
+    /**
+     * 一颗<b>完整晶簇</b>被采掉了（玩家亲手挖、或机器挖）。
+     * <p>
+     * 为什么按方块判而不是按掉落判：晶簇<b>本体</b>只有精准采集才掉，普通挖掉给的是产物
+     * （粗铁、福鲁伊克斯水晶之类），所以"背包里出现晶簇物品"这个判据等于要求玩家第一次就上精准采集。
+     * 引擎长出来的晶簇都是 {@link YunxianClusterBlock}（脚本注册的也是），按方块判能一次全覆盖。
+     */
+    private static boolean isCluster(BlockState state) {
+        return state.getBlock() instanceof YunxianClusterBlock;
+    }
+
+    /** 事件入口（在 {@code Yunxian} 的构造器里挂到游戏事件总线上）：玩家亲手挖掉一颗完整晶簇 */
+    public static void onBlockBroken(BlockEvent.BreakEvent event) {
+        if (event.getPlayer() instanceof ServerPlayer player && isCluster(event.getState())) {
+            award(player, BUDDING_FIRST_CLUSTER);
+        }
+    }
+
+    /** 机器（智能钻头）采掉一颗完整晶簇：发给附近的玩家 */
+    public static void onClusterHarvested(@Nullable Level level, BlockPos pos, BlockState state) {
+        if (level instanceof ServerLevel serverLevel && isCluster(state)) {
+            awardNear(serverLevel, pos, BUDDING_FIRST_CLUSTER);
+        }
     }
 
     // ==================== 生长监听器（挂在 BuddingGrowthEngine 上） ====================

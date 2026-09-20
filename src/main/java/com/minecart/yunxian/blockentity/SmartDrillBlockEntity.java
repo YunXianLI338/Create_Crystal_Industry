@@ -98,6 +98,11 @@ public class SmartDrillBlockEntity extends DrillBlockEntity {
 
     @Override
     public void onBlockBroken(BlockState stateToBreak) {
+        if (level != null) {
+            // 采到的若是完整晶簇：普通挖掉给产物、精准采集给本体，两种都算"采下第一颗晶簇"
+            YunxianAdvancements.onClusterHarvested(level,
+                    breakingPos != null ? breakingPos : getBreakingPos(), stateToBreak);
+        }
         if (filtering == null || filtering.getMode() == DrillMode.NORMAL) {
             // 脚本（KubeJS）注册的方块按我们自己的掉落规则来，而不是原版掉落表
             // （Create 的挖掘辅助自己算掉落，NeoForge 的 BlockDropsEvent 在那条路上不触发）

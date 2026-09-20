@@ -14,20 +14,13 @@
     "frame": "goal"
   },
   "criteria": {
-    "item": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {
-        "items": [
-          {
-            "items": "#create_crystal_industry:clusters"
-          }
-        ]
-      }
+    "impossible": {
+      "trigger": "minecraft:impossible"
     }
   },
   "requirements": [
     [
-      "item"
+      "impossible"
     ]
   ]
 }
