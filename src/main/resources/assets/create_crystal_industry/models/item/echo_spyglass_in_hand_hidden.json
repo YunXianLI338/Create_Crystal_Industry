@@ -1,5 +1,5 @@
 {
-    "parent": "create_crystal_industry:item/echo_spyglass",
+    "parent": "create_crystal_industry:item/echo_spyglass_in_hand",
     "display": {
         "thirdperson_righthand": { "scale": [0, 0, 0] },
         "thirdperson_lefthand":  { "scale": [0, 0, 0] },

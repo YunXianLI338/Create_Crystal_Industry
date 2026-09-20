@@ -1,5 +1,6 @@
 package com.minecart.yunxian.blockentity;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.behaviour.SmartDrillFilterBehaviour;
 import com.minecart.yunxian.behaviour.SmartDrillValueBoxTransform;
 import com.minecart.yunxian.block.SmartDrillBlock;
@@ -21,6 +22,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
@@ -136,6 +138,11 @@ public class SmartDrillBlockEntity extends DrillBlockEntity {
             }
             dropItem(target, stack);
         });
+
+        // 精准采集模式下"完整采下方块本身"——智能钻头的招牌能力之一
+        if (level instanceof ServerLevel serverLevel) {
+            YunxianAdvancements.awardNear(serverLevel, target, YunxianAdvancements.MACHINE_SILK_TOUCH);
+        }
     }
 
     /** 在目标位置生成一个无初速、正常拾取延迟的掉落物 */

@@ -2,6 +2,7 @@ package com.minecart.yunxian.blockentity;
 
 import java.util.List;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModBlockEntities;
@@ -32,6 +33,11 @@ public class MechanicalAcceleratorBlockEntity extends KineticBlockEntity {
 
     /** 工作面数量：全部 6 个面 */
     public static final int WORKING_FACES = 6;   // private → public
+
+    /** 三个"催生器挨着什么运转"成就的一次性门闩（不持久化：重登后重扫一次而已） */
+    private boolean sawFullSpeed;
+    private boolean sawVanillaAmethyst;
+    private boolean sawCrops;
 
     public MechanicalAcceleratorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.MECHANICAL_ACCELERATOR.get(), pos, state);
@@ -66,8 +72,22 @@ public class MechanicalAcceleratorBlockEntity extends KineticBlockEntity {
         for (Direction dir : Direction.values()) {
             if (level.random.nextFloat() < perFaceProb) {
                 BlockPos target = worldPosition.relative(dir);
-                level.getBlockState(target).randomTick(serverLevel, target, serverLevel.random);
+                // 走 acceleratedRandomTick：生长监听器靠它区分"催出来的"与"自然长的"
+                YunxianAdvancements.acceleratedRandomTick(serverLevel, target);
             }
+        }
+
+        // 转速拉满（256 RPM）——此时催生效果与电力催生器同级
+        if (!sawFullSpeed && Math.abs(speed) >= FULL_SPEED) {
+            sawFullSpeed = YunxianAdvancements.awardNear(serverLevel, worldPosition,
+                    YunxianAdvancements.ACCEL_FULL_SPEED);
+        }
+        // 邻面的"意外收获"：原版紫水晶母岩、作物/树苗（与电力催生器同一套判定）
+        if (!sawVanillaAmethyst) {
+            sawVanillaAmethyst = YunxianAdvancements.awardForVanillaAmethyst(serverLevel, worldPosition);
+        }
+        if (!sawCrops) {
+            sawCrops = YunxianAdvancements.awardForCrops(serverLevel, worldPosition);
         }
     }
 

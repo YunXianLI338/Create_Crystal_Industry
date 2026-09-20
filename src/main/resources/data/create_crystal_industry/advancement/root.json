@@ -1,0 +1,27 @@
+{
+  "display": {
+    "background": "create_crystal_industry:textures/gui/advancements.png",
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:rose_quartz_cluster"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.description"
+    },
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "requirements": [
+    [
+      "tick"
+    ]
+  ]
+}

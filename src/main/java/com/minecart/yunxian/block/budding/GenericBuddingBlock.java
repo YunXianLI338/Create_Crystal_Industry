@@ -6,6 +6,7 @@ import java.util.OptionalInt;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.blockentity.budding.BuddingGrowthBlockEntity;
 import com.minecart.yunxian.blockentity.budding.EchoConvertingBuddingBlockEntity;
 import com.minecart.yunxian.blockentity.budding.FlammableIceBuddingBlockEntity;
@@ -220,6 +221,10 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
                 return;
             }
             level.setBlockAndUpdate(targetPos, target.output());
+            // 矿石母岩侵蚀出矿石 / 回响母岩蔓延出幽匿——这一条也是"母岩会自己扩张"的关键
+            YunxianAdvancements.awardNear(level, pos, target.output().is(Blocks.SCULK)
+                    ? YunxianAdvancements.DEEP_SCULK_SPREAD
+                    : YunxianAdvancements.BUDDING_MOTHERLODE);
             return;
         }
     }

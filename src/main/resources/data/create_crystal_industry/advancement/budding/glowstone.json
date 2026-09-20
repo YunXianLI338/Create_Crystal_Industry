@@ -1,0 +1,32 @@
+{
+  "parent": "create_crystal_industry:budding/first_cluster",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:glowstone_cluster"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.budding.glowstone.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.budding.glowstone.description"
+    }
+  },
+  "criteria": {
+    "item": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:glowstone_cluster"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "item"
+    ]
+  ]
+}

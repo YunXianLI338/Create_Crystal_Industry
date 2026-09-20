@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:budding/first_budding",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:raw_iron"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.budding.motherlode.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.budding.motherlode.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

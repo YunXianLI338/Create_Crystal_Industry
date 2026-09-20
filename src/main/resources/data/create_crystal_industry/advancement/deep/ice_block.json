@@ -1,0 +1,32 @@
+{
+  "parent": "create_crystal_industry:deep/flammable_ice",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:flammable_ice_block"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.deep.ice_block.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.deep.ice_block.description"
+    }
+  },
+  "criteria": {
+    "item": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:flammable_ice_block"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "item"
+    ]
+  ]
+}

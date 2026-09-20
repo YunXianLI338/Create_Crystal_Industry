@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:machine/cleaner",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:chest"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.machine.cleaner_swap.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.machine.cleaner_swap.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

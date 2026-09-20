@@ -1,8 +1,10 @@
 package com.minecart.yunxian;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.behaviour.SmartDrillMovementBehaviour;
 import com.minecart.yunxian.budding.BuddingFamilies;
+import com.minecart.yunxian.budding.BuddingGrowthEngine;
 import com.minecart.yunxian.client.ModRenderers;
 import com.minecart.yunxian.datagen.YunxianDataGen;
 import com.minecart.yunxian.registry.*;
@@ -50,6 +52,8 @@ public class Yunxian {
 
     private static void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            // 成就：母岩每长出一级都会回调一次，用来判定「被催生出来的」那些时刻
+            BuddingGrowthEngine.setGrowthListener(YunxianAdvancements::onBuddingGrown);
             BlockStressValues.IMPACTS.register(ModBlocks.SMART_DRILL.get(), () -> 8.0);
             BlockStressValues.IMPACTS.register(ModBlocks.MECHANICAL_ACCELERATOR.get(), () -> 32.0);
             BlockStressValues.IMPACTS.register(ModBlocks.MECHANICAL_CLEANER.get(), () -> 4.0);

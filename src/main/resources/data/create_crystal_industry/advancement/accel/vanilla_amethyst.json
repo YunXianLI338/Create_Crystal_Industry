@@ -1,0 +1,25 @@
+{
+  "parent": "create_crystal_industry:accel/first_growth",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:budding_amethyst"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.vanilla_amethyst.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.vanilla_amethyst.description"
+    }
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

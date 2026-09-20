@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:deep/echo_budding",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:sculk"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.deep.sculk_spread.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.deep.sculk_spread.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "parent": "create_crystal_industry:budding/nine_ores",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:echo_budding"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.budding.collector.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.budding.collector.description"
+    },
+    "frame": "challenge"
+  },
+  "criteria": {
+    "items": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:glowstone_budding"
+          },
+          {
+            "items": "create_crystal_industry:flammable_ice_budding"
+          },
+          {
+            "items": "create_crystal_industry:echo_budding"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "items"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

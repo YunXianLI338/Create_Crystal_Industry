@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:accel/running",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:raw_iron_small_bud"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.first_growth.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.first_growth.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

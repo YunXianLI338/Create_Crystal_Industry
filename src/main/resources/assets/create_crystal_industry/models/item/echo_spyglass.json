@@ -1,5 +1,14 @@
 {
-    "parent": "create_crystal_industry:item/echo_spyglass_in_hand",
+    "loader": "neoforge:separate_transforms",
+    "gui_light": "front",
+    "base": {
+        "parent": "create_crystal_industry:item/echo_spyglass_in_hand"
+    },
+    "perspectives": {
+        "gui": {
+            "parent": "create_crystal_industry:item/echo_spyglass_flat"
+        }
+    },
     "overrides": [
         {
             "predicate": { "create_crystal_industry:using": 1.0 },

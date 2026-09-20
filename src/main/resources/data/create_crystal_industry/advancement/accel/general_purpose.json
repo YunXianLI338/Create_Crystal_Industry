@@ -1,0 +1,25 @@
+{
+  "parent": "create_crystal_industry:accel/vanilla_amethyst",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:wheat"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.general_purpose.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.general_purpose.description"
+    }
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

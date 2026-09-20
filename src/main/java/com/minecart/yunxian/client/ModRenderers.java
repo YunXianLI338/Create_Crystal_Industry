@@ -8,7 +8,6 @@ import com.minecart.yunxian.client.tooltip.GenericTooltipModifier;
 import com.minecart.yunxian.client.echo.CameraSync;
 import com.minecart.yunxian.client.echo.EchoHighlightRenderer;
 import com.minecart.yunxian.client.echo.EchoSpyglassFrameRenderer;
-import com.minecart.yunxian.client.echo.EchoSpyglassGuiDecorator;
 import com.minecart.yunxian.client.echo.EchoSpyglassHeadLayer;
 import com.minecart.yunxian.client.echo.EchoSpyglassScopeOverlay;
 import com.minecart.yunxian.client.echo.EchoSpyglassUseRenderer;
@@ -34,7 +33,6 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
-import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 
 import com.simibubi.create.content.kinetics.base.OrientedRotatingVisual;
 
@@ -61,7 +59,6 @@ public class ModRenderers {
         EchoSpyglassScopeOverlay.register();
         CameraSync.register();
         EchoSpyglassUseRenderer.register();
-        modEventBus.addListener(ModRenderers::onRegisterItemDecorations);
         modEventBus.addListener(ModRenderers::onRegisterRenderers);
         EchoSpyglassFrameRenderer.register();
     }
@@ -152,10 +149,6 @@ public class ModRenderers {
             PlayerRenderer renderer = (PlayerRenderer) event.getSkin(skin);
             renderer.addLayer(new EchoSpyglassHeadLayer(renderer));
         }
-    }
-
-    private static void onRegisterItemDecorations(RegisterItemDecorationsEvent event) {
-        event.register(ModItems.ECHO_SPYGLASS.get(), new EchoSpyglassGuiDecorator());
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {

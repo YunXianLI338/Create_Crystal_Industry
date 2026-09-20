@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:accel/first_accelerator",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:redstone_block"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.running.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.running.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "parent": "create_crystal_industry:accel/mechanical_accelerator",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create:rotation_speed_controller"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.full_speed.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.full_speed.description"
+    },
+    "frame": "challenge"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

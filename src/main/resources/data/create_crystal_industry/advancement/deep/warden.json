@@ -1,0 +1,30 @@
+{
+  "parent": "create_crystal_industry:deep/sculk_spread",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:sculk_shrieker"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.deep.warden.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.deep.warden.description"
+    },
+    "frame": "challenge",
+    "hidden": true
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

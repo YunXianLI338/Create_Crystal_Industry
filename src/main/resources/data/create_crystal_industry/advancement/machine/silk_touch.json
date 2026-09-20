@@ -1,0 +1,25 @@
+{
+  "parent": "create_crystal_industry:machine/smart_drill",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:enchanted_book"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.machine.silk_touch.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.machine.silk_touch.description"
+    }
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

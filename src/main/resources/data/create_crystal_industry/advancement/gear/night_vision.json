@@ -1,0 +1,25 @@
+{
+  "parent": "create_crystal_industry:gear/goggles",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:golden_carrot"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.gear.night_vision.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.gear.night_vision.description"
+    }
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}

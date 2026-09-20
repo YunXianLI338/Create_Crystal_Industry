@@ -1,0 +1,60 @@
+{
+  "parent": "create_crystal_industry:budding/rose_quartz",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:diamond_budding"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.budding.nine_ores.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.budding.nine_ores.description"
+    },
+    "frame": "challenge"
+  },
+  "criteria": {
+    "items": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:raw_iron_budding"
+          },
+          {
+            "items": "create_crystal_industry:raw_gold_budding"
+          },
+          {
+            "items": "create_crystal_industry:raw_copper_budding"
+          },
+          {
+            "items": "create_crystal_industry:raw_zinc_budding"
+          },
+          {
+            "items": "create_crystal_industry:diamond_budding"
+          },
+          {
+            "items": "create_crystal_industry:emerald_budding"
+          },
+          {
+            "items": "create_crystal_industry:lapis_budding"
+          },
+          {
+            "items": "create_crystal_industry:redstone_budding"
+          },
+          {
+            "items": "create_crystal_industry:quartz_budding"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "items"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

@@ -43,6 +43,31 @@ public final class BuddingGrowthEngine {
     }
 
     /**
+     * 放置成功后的回调（成就用）：长出了什么、长在哪、由哪个定义长的。
+     * <p>
+     * 只在已经放下方块之后调用一次，<b>不参与生长判定</b>——监听器读不到随机数，
+     * 也改不了结果，所以挂上它不会影响任何母岩的生长速率。实现必须便宜且不得抛异常：
+     * 它在随机刻里跑，抛出去就是崩服。
+     */
+    @FunctionalInterface
+    public interface GrowthListener {
+        void onGrown(ServerLevel level, BlockPos buddingPos, BlockPos grownPos, Block grown,
+                     GrowthDefinition definition);
+    }
+
+    /** 生长监听器（本模组的成就用；null = 不监听）。见 {@link #setGrowthListener} */
+    @Nullable
+    private static volatile GrowthListener growthListener;
+
+    /**
+     * 挂上（或摘掉，传 null）生长监听器。整个引擎共用一个槽位——它是给"观察者"用的，
+     * 不是给多方注册的事件总线。
+     */
+    public static void setGrowthListener(@Nullable GrowthListener listener) {
+        growthListener = listener;
+    }
+
+    /**
      * 免费生长（没有付费钩子）的便利重载。
      * <p>
      * 参数类型是 {@link Level} 而不是 {@code ServerLevel}：KubeJS 脚本拿到的往往是 {@code Level}
@@ -68,7 +93,13 @@ public final class BuddingGrowthEngine {
         if (gate != null && !gate.canGrow(level, pos)) {
             return false;
         }
-        place(level, pos.relative(pending.side()), pending.block(), pending.side(), pending.waterlogged());
+        BlockPos grownPos = pos.relative(pending.side());
+        place(level, grownPos, pending.block(), pending.side(), pending.waterlogged());
+
+        GrowthListener listener = growthListener;
+        if (listener != null) {
+            listener.onGrown(level, pos, grownPos, pending.block(), definition);
+        }
         return true;
     }
 

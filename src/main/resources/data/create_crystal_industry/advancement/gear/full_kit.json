@@ -1,0 +1,51 @@
+{
+  "parent": "create_crystal_industry:gear/reveal",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create:goggles"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.gear.full_kit.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.gear.full_kit.description"
+    },
+    "frame": "challenge"
+  },
+  "criteria": {
+    "items": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:accelerator"
+          },
+          {
+            "items": "create_crystal_industry:mechanical_accelerator"
+          },
+          {
+            "items": "create_crystal_industry:smart_drill"
+          },
+          {
+            "items": "create_crystal_industry:mechanical_cleaner"
+          },
+          {
+            "items": "create_crystal_industry:night_vision_goggles"
+          },
+          {
+            "items": "create_crystal_industry:echo_spyglass"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "items"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  }
+}

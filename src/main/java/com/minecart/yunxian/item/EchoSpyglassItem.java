@@ -1,5 +1,6 @@
 package com.minecart.yunxian.item;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.menu.EchoSpyglassFilterMenu;
@@ -7,6 +8,7 @@ import com.minecart.yunxian.network.EchoRevealPayload;
 import com.simibubi.create.content.logistics.filter.FilterItem;
 import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -123,10 +125,13 @@ public class EchoSpyglassItem extends Item {
     private void scanAndSend(Level level, ServerPlayer player, ItemStack heldStack) {
         if (level instanceof ServerLevel serverLevel) {
             ItemStack filter = getFilterStack(heldStack);
-            PacketDistributor.sendToPlayer(player,
-                    new EchoRevealPayload(serverLevel.dimension(),
-                            EchoScanner.findOres(serverLevel, player.blockPosition(),
-                                    ModConfig.Common.SCAN_RADIUS.get(), filter)));
+            List<BlockPos> found = EchoScanner.findOres(serverLevel, player.blockPosition(),
+                    ModConfig.Common.SCAN_RADIUS.get(), filter);
+            PacketDistributor.sendToPlayer(player, new EchoRevealPayload(serverLevel.dimension(), found));
+            if (!found.isEmpty()) {
+                // 真的透过障碍看见了东西——扫描一直没命中就不该发（空 filter 下扫到空气不算数）
+                YunxianAdvancements.award(player, YunxianAdvancements.GEAR_REVEAL);
+            }
         }
     }
 

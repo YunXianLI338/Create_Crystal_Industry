@@ -1,0 +1,25 @@
+{
+  "parent": "create_crystal_industry:deep/echo_budding",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:sculk_sensor"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.deep.silence.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.deep.silence.description"
+    }
+  },
+  "criteria": {
+    "avoid_vibration": {
+      "trigger": "minecraft:avoid_vibration"
+    }
+  },
+  "requirements": [
+    [
+      "avoid_vibration"
+    ]
+  ]
+}

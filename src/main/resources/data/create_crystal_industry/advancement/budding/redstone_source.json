@@ -1,0 +1,33 @@
+{
+  "parent": "create_crystal_industry:budding/first_budding",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:redstone_budding"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.budding.redstone_source.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.budding.redstone_source.description"
+    }
+  },
+  "criteria": {
+    "place": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "create_crystal_industry:redstone_budding"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "place"
+    ]
+  ]
+}

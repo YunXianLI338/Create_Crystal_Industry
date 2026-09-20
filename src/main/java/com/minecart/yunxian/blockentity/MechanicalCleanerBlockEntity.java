@@ -1,5 +1,6 @@
 package com.minecart.yunxian.blockentity;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.behaviour.MechanicalCleanerFilterBehaviour;
 import com.minecart.yunxian.menu.MechanicalCleanerMenu;
 import com.minecart.yunxian.behaviour.MechanicalCleanerValueBoxTransform;
@@ -23,6 +24,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -623,6 +625,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         // 每次吸取（本次 tick）的总额度：-1 = 不限
         int amountLimit = getEjectAmountCap();
         int extractedThisTick = 0;
+        // 有没有真的把物品从容器搬进自身库存（成就用；见方法末尾）
+        boolean transferred = false;
 
         for (int slot = 0; slot < source.getSlots(); slot++) {
             if (amountLimit >= 0 && extractedThisTick >= amountLimit)
@@ -651,7 +655,13 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
                 // 理论不会发生（已按可放入量取出），保险起见退回源容器
                 source.insertItem(slot, remainder, false);
             }
+            transferred |= extracted.getCount() > remainder.getCount();
             setChanged();
+        }
+
+        // 与容器直接交换成功：全程没有东西掉进世界里
+        if (transferred && level instanceof ServerLevel serverLevel) {
+            YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
         }
     }
 
@@ -757,6 +767,11 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
             if (!remainder.isEmpty()) {
                 // 送不回去（容器满）：退回吸尘器
                 inventory.insertItem(slotToEject, remainder, false);
+            }
+            // 与容器直接交换成功：全程没有东西掉进世界里
+            if (stack.getCount() > remainder.getCount() && level instanceof ServerLevel serverLevel) {
+                YunxianAdvancements.awardNear(serverLevel, worldPosition,
+                        YunxianAdvancements.MACHINE_CLEANER_SWAP);
             }
             setChanged();
             return;

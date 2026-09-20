@@ -1,0 +1,29 @@
+{
+  "parent": "create_crystal_industry:accel/first_growth",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:diamond_cluster"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.accel.witness_cluster.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.accel.witness_cluster.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ],
+  "rewards": {
+    "experience": 50
+  }
+}

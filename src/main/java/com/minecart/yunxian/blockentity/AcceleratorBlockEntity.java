@@ -2,6 +2,7 @@ package com.minecart.yunxian.blockentity;
 
 import java.util.List;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.block.AcceleratorBlock;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModBlockEntities;
@@ -35,6 +36,10 @@ public class AcceleratorBlockEntity extends BlockEntity implements IEnergyStorag
 
     private int tickCounter;
     private final EnergyStorage energyStorage;
+
+    /** 「催生器挨着原版紫水晶母岩 / 作物运转」两个成就的一次性门闩（不持久化：重登后重扫一次而已） */
+    private boolean sawVanillaAmethyst;
+    private boolean sawCrops;
 
     public AcceleratorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ACCELERATOR.get(), pos, state);
@@ -77,11 +82,23 @@ public class AcceleratorBlockEntity extends BlockEntity implements IEnergyStorag
         // 足额：正常消耗并催生
         if (!state.getValue(AcceleratorBlock.POWERED)) {
             level.setBlock(pos, state.setValue(AcceleratorBlock.POWERED, true), 3);
+            // 从"停着"变成"转着"的那一刻：第一次通电运转
+            YunxianAdvancements.awardNear(serverLevel, pos, YunxianAdvancements.ACCEL_RUNNING);
         }
 
         for (Direction direction : Direction.values()) {
             BlockPos neighborPos = pos.relative(direction);
-            level.getBlockState(neighborPos).randomTick(serverLevel, neighborPos, serverLevel.random);
+            // 走 acceleratedRandomTick 而不是直接 randomTick：生长监听器靠它区分"催出来的"与"自然长的"
+            YunxianAdvancements.acceleratedRandomTick(serverLevel, neighborPos);
+        }
+
+        // 邻面有没有"催生器也管用"的东西（原版紫水晶母岩、作物/树苗）。
+        // 各自只在真的发出去过之后才停止扫描——发成就很便宜，但没必要每 tick 重复扫
+        if (!sawVanillaAmethyst) {
+            sawVanillaAmethyst = YunxianAdvancements.awardForVanillaAmethyst(serverLevel, pos);
+        }
+        if (!sawCrops) {
+            sawCrops = YunxianAdvancements.awardForCrops(serverLevel, pos);
         }
 
         energyStorage.extractEnergy(ENERGY_COST_PER_OPERATION, false);

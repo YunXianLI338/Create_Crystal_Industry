@@ -1,11 +1,13 @@
 package com.minecart.yunxian.block.budding;
 
+import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.budding.BuddingFamily;
 import com.minecart.yunxian.blockentity.budding.EchoConvertingBuddingBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
@@ -112,28 +114,35 @@ public class EchoConvertingBuddingBlock extends GenericBuddingBlock implements E
                                        boolean willHarvest, FluidState fluid) {
         boolean result = super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
 
-        if (state.getValue(BlockStateProperties.CAN_SUMMON) && level instanceof ServerLevel serverLevel) {
-            trySummonWarden(serverLevel, pos);
+        if (state.getValue(BlockStateProperties.CAN_SUMMON) && level instanceof ServerLevel serverLevel
+                && trySummonWarden(serverLevel, pos) && player instanceof ServerPlayer serverPlayer) {
+            // 挖掉自然生成的回响母岩 = 把监守者叫醒。只有真的召出来了才算数
+            YunxianAdvancements.award(serverPlayer, YunxianAdvancements.DEEP_WARDEN);
         }
         return result;
     }
 
-    private void trySummonWarden(ServerLevel level, BlockPos pos) {
+    /**
+     * @return 是否真的召唤出了监守者（附近已有监守者、或实体创建失败时为 false——
+     *         此时没有"唤醒"可言，成就不该发）
+     */
+    private boolean trySummonWarden(ServerLevel level, BlockPos pos) {
         // 与幽匿尖啸体（SculkShriekerBlock）完全一致的检测方式：
         // 以母岩为中心 ±48 格内已有监守者则不重复召唤。
         AABB checkArea = new AABB(pos).inflate(WARDEN_CHECK_RADIUS);
         if (!level.getEntitiesOfClass(Warden.class, checkArea, EntitySelector.NO_SPECTATORS).isEmpty()) {
-            return;
+            return false;
         }
 
         BlockPos spawnPos = findWardenSpawnPos(level, pos);
         Warden warden = EntityType.WARDEN.create(level);
         if (warden == null) {
-            return;
+            return false;
         }
         warden.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, 0.0F, 0.0F);
         warden.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.TRIGGERED, null);
         level.addFreshEntityWithPassengers(warden);
+        return true;
     }
 
     /**

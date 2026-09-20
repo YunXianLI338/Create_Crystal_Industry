@@ -1,0 +1,33 @@
+{
+  "parent": "create_crystal_industry:root",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "create_crystal_industry:flammable_ice"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.deep.flammable_ice.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.deep.flammable_ice.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "item": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "create_crystal_industry:flammable_ice_budding"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "item"
+    ]
+  ]
+}

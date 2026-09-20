@@ -1,0 +1,26 @@
+{
+  "parent": "create_crystal_industry:gear/spyglass",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:diamond_ore"
+    },
+    "title": {
+      "translate": "advancements.create_crystal_industry.gear.reveal.title"
+    },
+    "description": {
+      "translate": "advancements.create_crystal_industry.gear.reveal.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "impossible": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "impossible"
+    ]
+  ]
+}
