@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import com.minecart.yunxian.battery.CrystalCapacities;
 import com.minecart.yunxian.blockentity.CrystalBatteryBlockEntity;
+import com.minecart.yunxian.item.CrystalBatteryItem;
 import com.minecart.yunxian.registry.ModBlockEntities;
 import com.simibubi.create.api.connectivity.ConnectivityHandler;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -14,15 +15,19 @@ import com.simibubi.create.foundation.blockEntity.ComparatorUtil;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,6 +37,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.common.util.DeferredSoundType;
+import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -39,11 +46,12 @@ import javax.annotation.ParametersAreNonnullByDefault;
  * 水晶电池方块。多方块骨架、方块状态（top / bottom / shape）与外观模型都照搬
  * 机械动力的流体储罐，只有「装什么」从流体换成了晶体与电。
  * <p>
- * 三段交互各管一件事，互不冲突：
+ * 四段交互各管一件事，互不冲突：
  * <ul>
- *   <li>手持晶体方块右键 → 往这一格塞晶体（{@link #useItemOn}）；</li>
+ *   <li>手持晶体方块右键 → 把整座电池的空位都补上（{@link #useItemOn}）；</li>
+ *   <li>手持晶体方块<b>潜行</b>右键 → 只装被点的那一格；</li>
  *   <li>扳手右键 → 切换整座结构的有窗 / 无窗外观（{@link #onWrenched}）；</li>
- *   <li>扳手潜行右键 → 快速拆卸，掉空格电池 + 这一格的晶体（{@code IWrenchable} 默认实现，
+ *   <li>扳手<b>潜行</b>右键 → 快速拆卸，掉空格电池 + 这一格的晶体（{@code IWrenchable} 默认实现，
  *       掉落物走 {@link #getDrops}）。</li>
  * </ul>
  */
@@ -98,8 +106,11 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
     }
 
     /**
-     * 手持晶体方块右键空格子 → 塞入。手里不是晶体方块（例如扳手）时一律放行，
-     * 让扳手的拆卸 / 切窗逻辑接手。
+     * 手持晶体方块右键 → 给整座电池里所有还空着的格子都装上，手上有多少装多少（被点的那格优先保证）。
+     * 潜行右键则只装被点的那一格，不动结构里的其它空位。单格电池两种方式等价。
+     * <p>
+     * 手里不是晶体方块（例如扳手）时一律放行，让扳手的拆卸 / 切窗逻辑接手；
+     * 该装的格子都装满了时同样放行，免得对着满电池空摆手臂。
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
@@ -108,14 +119,22 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         return onBlockEntityUseItemOn(level, pos, battery -> {
-            // 已经塞过晶体的格子不再接受第二颗：要换先拆
-            if (!battery.getCrystal().isEmpty()) {
-                return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            boolean sneaking = player.isShiftKeyDown();
+            if (level.isClientSide) {
+                // 客户端只负责摆臂；判据与服务端一致，免得预测与实际不符（空挥手 / 该挥手却不挥）
+                boolean installable = sneaking
+                        ? battery.getCrystal().isEmpty()
+                        : battery.getEmptySlotCount() > 0;
+                return installable
+                        ? ItemInteractionResult.SUCCESS
+                        : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
             }
-            if (!level.isClientSide) {
-                battery.insertCrystal(stack);
-            }
-            return ItemInteractionResult.SUCCESS;
+            int installed = sneaking
+                    ? battery.fillThisSlot(stack, player)
+                    : battery.fillEmptySlots(stack, player);
+            return installed > 0
+                    ? ItemInteractionResult.SUCCESS
+                    : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         });
     }
 
@@ -173,6 +192,21 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
     @Override
     public BlockEntityType<? extends CrystalBatteryBlockEntity> getBlockEntityType() {
         return ModBlockEntities.CRYSTAL_BATTERY.get();
+    }
+
+    /** 整层放置时每块都要响一声会很吵，用一套音量很小的金属音盖掉（与储罐的 SILENCED_METAL 一致） */
+    public static final SoundType SILENCED_METAL = new DeferredSoundType(0.1F, 1.5F,
+            () -> SoundEvents.METAL_BREAK, () -> SoundEvents.METAL_STEP,
+            () -> SoundEvents.METAL_PLACE, () -> SoundEvents.METAL_HIT,
+            () -> SoundEvents.METAL_FALL);
+
+    @Override
+    public SoundType getSoundType(BlockState state, LevelReader level, BlockPos pos, @Nullable Entity entity) {
+        SoundType soundType = super.getSoundType(state, level, pos, entity);
+        if (entity != null && entity.getPersistentData().contains(CrystalBatteryItem.SILENCE_BATCH_PLACEMENT)) {
+            return SILENCED_METAL;
+        }
+        return soundType;
     }
 
     /** 窗口形状：与 {@code FluidTankBlock.Shape} 同名同性，模型文件因此可以直接照搬储罐 */

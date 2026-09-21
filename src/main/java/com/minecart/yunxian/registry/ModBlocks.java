@@ -6,6 +6,7 @@ import com.minecart.yunxian.block.CrystalBatteryBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalCleanerBlock;
 import com.minecart.yunxian.block.SmartDrillBlock;
+import com.minecart.yunxian.item.CrystalBatteryItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -17,6 +18,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.fml.ModList;
 
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 /**
@@ -58,11 +60,13 @@ public final class ModBlocks {
             () -> new MechanicalCleanerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion()));
 
     // 水晶电池：属性逐条对齐机械动力流体储罐（铜块底 + 无遮挡 + 始终导电 + 掉落自己算，不走掉落表）
+    // 物品用 CrystalBatteryItem：在 2x2 / 3x3 结构上再放一层时一次补齐整层
     public static final DeferredBlock<Block> CRYSTAL_BATTERY = registerBlock("crystal_battery",
             () -> new CrystalBatteryBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_BLOCK)
                     .noOcclusion()
                     .isRedstoneConductor((state, level, pos) -> true)
-                    .noLootTable()));
+                    .noLootTable()),
+            CrystalBatteryItem::new);
 
     /** AE2 是否加载：可选联动（福鲁伊克斯母岩）的开关 */
     public static final boolean AE2_LOADED =
@@ -73,8 +77,17 @@ public final class ModBlocks {
 
     /** 注册方块并顺带注册对应的 BlockItem */
     public static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T> blockSupplier) {
+        return registerBlock(name, blockSupplier, BlockItem::new);
+    }
+
+    /**
+     * 注册方块并顺带注册对应的 BlockItem，方块的物品需要自定义行为时用这个重载
+     * （例如水晶电池那个"一次放一层"的 {@link CrystalBatteryItem}）。
+     */
+    public static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T> blockSupplier,
+                                                                  BiFunction<T, Item.Properties, ? extends Item> itemFactory) {
         DeferredBlock<T> block = BLOCKS.register(name, blockSupplier);
-        ModItems.ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
+        ModItems.ITEMS.register(name, () -> itemFactory.apply(block.get(), new Item.Properties()));
         return block;
     }
 

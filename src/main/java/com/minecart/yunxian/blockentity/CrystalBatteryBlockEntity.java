@@ -1,7 +1,9 @@
 package com.minecart.yunxian.blockentity;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.minecart.yunxian.battery.CrystalCapacities;
@@ -26,6 +28,9 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -102,21 +107,103 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
     }
 
     /**
-     * 把玩家手里的晶体方块塞进这一格。只在空格子上生效，调用方负责判断。
-     * 消耗数量 1（创造模式下同样会扣，与机器塞物品的惯例一致）。
+     * 普通右键：给整座电池里所有还空着的格子各塞一颗晶体，手上有多少塞多少，一格一颗。
+     * 被右键的那一格优先保证——万一手上的晶体不够填满整座，至少点中的那格一定装上，不会让人白点。
+     *
+     * @return 实际塞进去的数量
      */
-    public void insertCrystal(ItemStack stack) {
-        if (!crystal.isEmpty()) {
-            return;
+    public int fillEmptySlots(ItemStack stack, Player player) {
+        return fill(stack, player, false);
+    }
+
+    /**
+     * 潜行右键：只装被点的那一格，不碰结构里的其它空位。
+     * 想给特定某格换/补晶体、又不想影响整座时用这个。
+     *
+     * @return 实际塞进去的数量（0 或 1）
+     */
+    public int fillThisSlot(ItemStack stack, Player player) {
+        return fill(stack, player, true);
+    }
+
+    /**
+     * 装晶体的共同实现。调用方负责判断手里拿的是不是晶体方块
+     * （客户端只是预测，真正的消耗在服务端发生）。
+     *
+     * @param onlyThisSlot true = 只装被点的那一格，false = 补满整座结构
+     */
+    private int fill(ItemStack stack, Player player, boolean onlyThisSlot) {
+        if (stack.isEmpty() || !CrystalCapacities.isCrystal(stack)) {
+            return 0;
         }
-        crystal = stack.copyWithCount(1);
-        stack.shrink(1);
-        setChanged();
-        if (level != null) {
-            level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
-                    0.7F, 1.1F);
+        int installed = installCrystalInto(this, stack, player);
+        if (!onlyThisSlot) {
+            for (CrystalBatteryBlockEntity part : resolveController().parts()) {
+                if (stack.isEmpty()) {
+                    break;
+                }
+                if (part != this) {
+                    installed += installCrystalInto(part, stack, player);
+                }
+            }
         }
-        notifyEnergyChanged();
+        if (installed > 0) {
+            if (level != null) {
+                level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
+                        0.7F, 1.1F);
+            }
+            notifyEnergyChanged();
+        }
+        return installed;
+    }
+
+    /**
+     * 往一格空电池里塞一颗，并从手上扣掉一颗。改到哪一格就由哪一格标脏并发包：
+     * 各格的晶体是分散存的，也只由各格自己同步给客户端（护目镜要靠它统计组成）。
+     * <p>
+     * 扣数量走 {@link ItemStack#consume(int, Entity)}，创造模式下不扣——与"一次放一层"
+     * 那边 {@code BlockItem.place} 的消耗口径一致，也让创造模式一次点击就能装满整座电池。
+     */
+    private static int installCrystalInto(CrystalBatteryBlockEntity part, ItemStack stack, Player player) {
+        if (stack.isEmpty() || !part.crystal.isEmpty()) {
+            return 0;
+        }
+        part.crystal = stack.copyWithCount(1);
+        stack.consume(1, player);
+        part.setChanged();
+        part.sendData();
+        return 1;
+    }
+
+    /** 整座电池里还空着的格子数；客户端用它预测右键能不能装上 */
+    public int getEmptySlotCount() {
+        int empty = 0;
+        for (CrystalBatteryBlockEntity part : resolveController().parts()) {
+            if (part.crystal.isEmpty()) {
+                empty++;
+            }
+        }
+        return empty;
+    }
+
+    /**
+     * 整座电池的晶体组成：晶体方块 → 个数，顺序 = 结构扫描顺序（先出现的排前面）。
+     * 每格至多一颗，所以个数也就是"装了几格"。整座都空时返回空表。
+     * <p>
+     * <b>键必须是 {@link Item}，不能是 {@code ItemStack}。</b>原版的 {@code ItemStack} 没有重写
+     * {@code equals}/{@code hashCode}（只提供 {@link ItemStack#isSameItemSameComponents} 这类静态工具），
+     * 拿它当键就是按引用比较——每格都会落成新的一项，护目镜于是显示成一长串「可燃冰块 ×1」。
+     * 物品本体在注册表里是单例，用身份相等正好等价于"同一种物品"，不依赖任何 equality 实现。
+     */
+    public Map<Item, Integer> getCrystalComposition() {
+        Map<Item, Integer> composition = new LinkedHashMap<>();
+        for (CrystalBatteryBlockEntity part : resolveController().parts()) {
+            if (part.crystal.isEmpty()) {
+                continue;
+            }
+            composition.merge(part.crystal.getItem(), 1, Integer::sum);
+        }
+        return composition;
     }
 
     // ==================== 电量 ====================
@@ -586,9 +673,18 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
             energy = tag.getInt("Energy");
         }
 
-        // 客户端拿到包才能知道结构有没有变大变小，缓存过的渲染包围盒要在这一步失效
+        // 客户端拿到包才能知道结构有没有变大变小，缓存过的渲染包围盒要在这一步失效。
+        // 这里还必须主动顶一次方块更新让这一段区块网格重建，原因见 FluidTankBlockEntity 同处：
+        // CT 连接材质的数据（CTModel.CT_PROPERTY）是在**区块网格构建时**算的，判定走
+        // FluidTankCTBehaviour.connectsTo → ConnectivityHandler.isConnected，读的是方块实体的
+        // controller 字段；而方块实体的同步包本身不会让网格重建（原版认为 BE 数据只影响实体渲染）。
+        // 结果是网格用旧的连接关系算出 CT 索引，一旦落到 fluid_tank_top_connected 里那几个**全透明**
+        // 的格子上，cutout 渲染会把整面丢掉——表现为"顶盖消失、能看穿进去"，而方块状态其实是对的。
         if (clientPacket && (!Objects.equals(controllerBefore, controller)
                 || prevWidth != width || prevHeight != height)) {
+            if (hasLevel()) {
+                level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 16);
+            }
             invalidateRenderBoundingBox();
         }
     }
@@ -599,18 +695,20 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         CrystalBatteryBlockEntity controller = resolveController();
         boolean client = level != null && level.isClientSide;
-        // 客户端拿不到别的格子的实时电量，用控制器同步过来的汇总值
+        // 客户端拿不到别的格子的实时电量，用控制器同步过来的汇总值；
+        // 晶体组成不用特殊处理：每格的晶体都由各格自己同步，客户端照样能自己扫出来
         int stored = client ? controller.syncedEnergy : controller.getTotalEnergy();
         int capacity = client ? controller.syncedCapacity : controller.getTotalCapacity();
 
+        // 三条带标签的信息（晶体 / 电量 / 结构）必须给同一个缩进值才能左端对齐成一列。
+        // forGoggles 的缩进值每多一级就整体右移一点（实测一级约一个空格宽），所以只要其中
+        // 一行写成 1 而别的行是 0，那一行看着就像被嵌套在上一行下面——三行统一用 0，
+        // 只有真正从属的行（下面的晶体条目）才给 1。
         CreateLang.builder()
                 .add(Component.translatable("create_crystal_industry.goggles.battery.crystal_label")
                         .withStyle(ChatFormatting.GRAY))
-                .add(crystal.isEmpty()
-                        ? Component.translatable("create_crystal_industry.goggles.battery.crystal_empty")
-                                .withStyle(ChatFormatting.DARK_GRAY)
-                        : crystal.getHoverName().copy().withStyle(ChatFormatting.WHITE))
-                .forGoggles(tooltip, 1);
+                .forGoggles(tooltip);
+        addCrystalComposition(tooltip, controller);
 
         CreateLang.builder()
                 .add(Component.translatable("create_crystal_industry.goggles.battery.energy_label")
@@ -618,19 +716,43 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
                 .add(CreateLang.number(stored).style(ChatFormatting.GOLD))
                 .text(ChatFormatting.GRAY, " / ")
                 .add(CreateLang.number(capacity).style(ChatFormatting.DARK_GRAY))
-                .add(Component.literal(" FE").withStyle(ChatFormatting.GRAY))
-                .forGoggles(tooltip, 1);
+                .add(Component.translatable("create_crystal_industry.goggles.battery.energy_unit")
+                        .withStyle(ChatFormatting.GRAY))
+                .forGoggles(tooltip);
 
-        if (controller.getTotalSize() > 1) {
+        // 结构用尺寸表示（宽×宽×高）而不是格子总数：单格就是 1×1×1，没有显示的必要
+        int width = controller.getWidth();
+        int height = controller.getHeight();
+        if (width > 1 || height > 1) {
             CreateLang.builder()
                     .add(Component.translatable("create_crystal_industry.goggles.battery.size_label")
                             .withStyle(ChatFormatting.GRAY))
-                    .add(CreateLang.number(controller.getTotalSize()).style(ChatFormatting.WHITE))
-                    .add(Component.translatable("create_crystal_industry.goggles.battery.size_unit")
-                            .withStyle(ChatFormatting.DARK_GRAY))
-                    .forGoggles(tooltip, 1);
+                    .add(Component.translatable("create_crystal_industry.goggles.battery.size_value",
+                                    width, width, height)
+                            .withStyle(ChatFormatting.WHITE))
+                    .forGoggles(tooltip);
         }
         return true;
+    }
+
+    /**
+     * 晶体组成：<b>每种晶体各占一行</b>，形如「可燃冰块 ×10」换行「玫瑰石英块 ×5」，
+     * 而不是把每种晶体在同行里逗号隔开。排版与 Create 流体容器那段一致：标签单独一行，条目再缩进。
+     */
+    private void addCrystalComposition(List<Component> tooltip, CrystalBatteryBlockEntity controller) {
+        Map<Item, Integer> composition = controller.getCrystalComposition();
+        if (composition.isEmpty()) {
+            CreateLang.builder()
+                    .add(Component.translatable("create_crystal_industry.goggles.battery.crystal_empty")
+                            .withStyle(ChatFormatting.DARK_GRAY))
+                    .forGoggles(tooltip, 1);
+            return;
+        }
+        composition.forEach((crystal, count) -> CreateLang.builder()
+                .add(new ItemStack(crystal).getHoverName().copy().withStyle(ChatFormatting.WHITE))
+                .add(Component.translatable("create_crystal_industry.goggles.battery.crystal_count", count)
+                        .withStyle(ChatFormatting.GOLD))
+                .forGoggles(tooltip, 1));
     }
 
     /**
