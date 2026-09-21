@@ -1,5 +1,6 @@
 {
   "values": [
+    "create_crystal_industry:crystal_battery",
     "create_crystal_industry:rose_quartz_budding",
     "create_crystal_industry:rose_quartz_small_bud",
     "create_crystal_industry:rose_quartz_medium_bud",

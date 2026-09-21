@@ -41,6 +41,7 @@ public final class ModCreativeTabs {
                         output.accept(ModBlocks.MECHANICAL_ACCELERATOR.get());
                         output.accept(ModBlocks.SMART_DRILL.get());
                         output.accept(ModBlocks.MECHANICAL_CLEANER.get());
+                        output.accept(ModBlocks.CRYSTAL_BATTERY.get());
                         output.accept(ModItems.ECHO_SPYGLASS.get());
                         output.accept(ModItems.NIGHT_VISION_GOGGLES.get());
 

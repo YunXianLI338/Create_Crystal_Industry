@@ -318,6 +318,32 @@ public final class ModConfig {
                 .translation(LANG_PREFIX + "maxResults")
                 .defineInRange("maxResults", 4096, 64, 100000);
 
+        // ===== 水晶电池 =====
+        // 「哪些方块能当晶体、算哪一档」不在配置里，走方块标签
+        // （create_crystal_industry:battery_crystal/<档位>_capacity，见 battery/CrystalTier）：
+        // 标签是数据包内容，整合包直接覆写或用 KubeJS 加就行，不必改配置。
+
+        public static final ModConfigSpec.IntValue CRYSTAL_BATTERY_MAX_WIDTH = BUILDER
+                .comment(
+                        "Maximum horizontal size of a Crystal Battery multiblock (width x width).",
+                        "The Fluid Tank this block is modelled after is limited to 3.")
+                .translation(LANG_PREFIX + "crystalBatteryMaxWidth")
+                .defineInRange("crystalBatteryMaxWidth", 3, 1, 16);
+
+        public static final ModConfigSpec.IntValue CRYSTAL_BATTERY_MAX_HEIGHT = BUILDER
+                .comment(
+                        "Maximum height of a Crystal Battery multiblock, in blocks.")
+                .translation(LANG_PREFIX + "crystalBatteryMaxHeight")
+                .defineInRange("crystalBatteryMaxHeight", 32, 1, 256);
+
+        public static int crystalBatteryMaxWidth() {
+            return CRYSTAL_BATTERY_MAX_WIDTH.get();
+        }
+
+        public static int crystalBatteryMaxHeight() {
+            return CRYSTAL_BATTERY_MAX_HEIGHT.get();
+        }
+
         public static final ModConfigSpec SPEC = BUILDER.build();
     }
 

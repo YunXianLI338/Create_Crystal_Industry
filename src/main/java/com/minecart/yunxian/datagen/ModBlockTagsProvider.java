@@ -33,13 +33,16 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
     protected void addTags(HolderLookup.Provider provider) {
         // c:budding_blocks —— 智能钻头精准采集与 AE2 晶体催生器都认它
         IntrinsicTagAppender<Block> budding = tag(ModTags.BUDDING_BLOCKS);
-        // 挖掘工具：全部家族方块 + 可燃冰装饰方块 + 四种机器
+        // 挖掘工具：全部家族方块 + 可燃冰装饰方块 + 四种机器 + 水晶电池
         IntrinsicTagAppender<Block> pickaxe = tag(BlockTags.MINEABLE_WITH_PICKAXE);
         pickaxe.add(ModBlocks.FLAMMABLE_ICE_BLOCK.get(), ModBlocks.ACCELERATOR.get(),
                 ModBlocks.SMART_DRILL.get(), ModBlocks.MECHANICAL_ACCELERATOR.get(),
-                ModBlocks.MECHANICAL_CLEANER.get());
+                ModBlocks.MECHANICAL_CLEANER.get(), ModBlocks.CRYSTAL_BATTERY.get());
         // 挖掘等级：只有指定了等级的家族才登记（荧石与可燃冰不设等级）
         IntrinsicTagAppender<Block> needsStone = tag(BlockTags.NEEDS_STONE_TOOL);
+        // 水晶电池底子取的是铜块属性（requiresCorrectToolForDrops），
+        // 等级必须跟着一起登记，否则任何工具都算不上"正确"，挖掉一格都不掉东西
+        needsStone.add(ModBlocks.CRYSTAL_BATTERY.get());
         IntrinsicTagAppender<Block> needsIron = tag(BlockTags.NEEDS_IRON_TOOL);
         IntrinsicTagAppender<Block> needsDiamond = tag(BlockTags.NEEDS_DIAMOND_TOOL);
 

@@ -2,6 +2,7 @@ package com.minecart.yunxian.registry;
 
 import com.minecart.yunxian.*;
 import com.minecart.yunxian.block.AcceleratorBlock;
+import com.minecart.yunxian.block.CrystalBatteryBlock;
 import com.minecart.yunxian.block.MechanicalAcceleratorBlock;
 import com.minecart.yunxian.block.MechanicalCleanerBlock;
 import com.minecart.yunxian.block.SmartDrillBlock;
@@ -55,6 +56,13 @@ public final class ModBlocks {
     // 动力吸尘器
     public static final DeferredBlock<Block> MECHANICAL_CLEANER = registerBlock("mechanical_cleaner",
             () -> new MechanicalCleanerBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion()));
+
+    // 水晶电池：属性逐条对齐机械动力流体储罐（铜块底 + 无遮挡 + 始终导电 + 掉落自己算，不走掉落表）
+    public static final DeferredBlock<Block> CRYSTAL_BATTERY = registerBlock("crystal_battery",
+            () -> new CrystalBatteryBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.COPPER_BLOCK)
+                    .noOcclusion()
+                    .isRedstoneConductor((state, level, pos) -> true)
+                    .noLootTable()));
 
     /** AE2 是否加载：可选联动（福鲁伊克斯母岩）的开关 */
     public static final boolean AE2_LOADED =

@@ -29,6 +29,28 @@ public final class ModTags {
     public static final TagKey<Item> FAN_IMMUNE = TagKey.create(Registries.ITEM,
             ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "fan_immune"));
 
+    /**
+     * 水晶电池的晶体方块容量档位（方块标签，见 {@code battery/CrystalTier}）。
+     * <p>
+     * 一个方块只要出现在其中任意一个标签里就是晶体方块，能塞进电池；出现在哪个标签里就按哪一档算容量。
+     * 四个标签都进不去的方块右键电池不生效。<b>容量数值写死在 CrystalTier 里，标签只决定归属。</b>
+     * <p>
+     * 标签带 {@code /} 的分段路径：数据包路径是
+     * {@code data/create_crystal_industry/tags/block/battery_crystal/&lt;档位&gt;.json}。
+     */
+    public static final TagKey<Block> BATTERY_CRYSTAL_LOW = batteryCrystal("low_capacity");
+
+    public static final TagKey<Block> BATTERY_CRYSTAL_MEDIUM = batteryCrystal("medium_capacity");
+
+    public static final TagKey<Block> BATTERY_CRYSTAL_HIGH = batteryCrystal("high_capacity");
+
+    public static final TagKey<Block> BATTERY_CRYSTAL_EXTREME = batteryCrystal("extreme_capacity");
+
+    private static TagKey<Block> batteryCrystal(String tier) {
+        return TagKey.create(Registries.BLOCK,
+                ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "battery_crystal/" + tier));
+    }
+
     private ModTags() {
     }
 }

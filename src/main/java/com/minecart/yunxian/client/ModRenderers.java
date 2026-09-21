@@ -1,8 +1,10 @@
 package com.minecart.yunxian.client;
 
 import com.minecart.yunxian.registry.ModBlockEntities;
+import com.minecart.yunxian.registry.ModBlocks;
 import com.minecart.yunxian.registry.ModItems;
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.client.battery.CrystalBatteryModel;
 import com.minecart.yunxian.client.nightvision.model.NightVisionGogglesModel;
 import com.minecart.yunxian.client.tooltip.GenericTooltipModifier;
 import com.minecart.yunxian.client.echo.CameraSync;
@@ -122,6 +124,11 @@ public class ModRenderers {
                     (stack, level, entity, seed) ->
                             entity != null && entity.isUsingItem() && entity.getUseItem() == stack
                                     ? 1.0F : 0.0F);
+
+            // 水晶电池：连接材质 / 侧面剔除模型。
+            // 渲染层（窗那几片薄面要镂空）写在模型文件的 render_type 里，不走已过时的
+            // ItemBlockRenderTypes.setRenderLayer
+            CrystalBatteryModel.register();
             // ===== 物品提示（机械动力风格，统一走 GenericTooltipModifier）=====
             // 夜视仪护目镜：简介含当前按键名，动态求值
             GenericTooltipModifier.register(ModItems.NIGHT_VISION_GOGGLES.get(),

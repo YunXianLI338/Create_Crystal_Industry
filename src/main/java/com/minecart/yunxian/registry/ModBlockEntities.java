@@ -48,6 +48,13 @@ public final class ModBlockEntities {
                     MechanicalCleanerBlockEntity::new,
                     ModBlocks.MECHANICAL_CLEANER.get()
             ).build(null));
+
+    // 水晶电池：多方块容器，骨架复用 Create 的 ConnectivityHandler
+    public static final Supplier<BlockEntityType<CrystalBatteryBlockEntity>> CRYSTAL_BATTERY =
+            BLOCK_ENTITIES.register("crystal_battery", () -> BlockEntityType.Builder.of(
+                    CrystalBatteryBlockEntity::new,
+                    ModBlocks.CRYSTAL_BATTERY.get()
+            ).build(null));
     // 可燃冰母岩：纯展示 BE，仅用于护目镜信息
     public static final Supplier<BlockEntityType<FlammableIceBuddingBlockEntity>> FLAMMABLE_ICE_BUDDING =
             BLOCK_ENTITIES.register("flammable_ice_budding", () -> BlockEntityType.Builder.of(

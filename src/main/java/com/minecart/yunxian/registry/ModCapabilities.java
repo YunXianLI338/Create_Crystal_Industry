@@ -25,6 +25,12 @@ public final class ModCapabilities {
                 ModBlockEntities.MECHANICAL_CLEANER.get(),
                 (be, context) -> be.getInventory()
         );
+        // 水晶电池：整座多方块结构共用一个 FE 接口，从任意一格接出去看到的都是同一池电
+        event.registerBlockEntity(
+                Capabilities.EnergyStorage.BLOCK,
+                ModBlockEntities.CRYSTAL_BATTERY.get(),
+                (blockEntity, side) -> blockEntity.getEnergyCapability(side)
+        );
 
         // ★ 软依赖门控：只有 Curios 已加载才触碰 Curios 类
         if (ModList.get().isLoaded("curios")) {
