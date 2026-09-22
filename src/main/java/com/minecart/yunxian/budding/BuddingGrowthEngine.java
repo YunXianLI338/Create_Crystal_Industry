@@ -28,6 +28,9 @@ import org.jetbrains.annotations.Nullable;
  * <p>
  * 判定顺序与随机数消耗顺序是本类的对外契约的一部分：改顺序会改变各母岩的生长速率，
  * 也会让附属模组的既有手感变化。改动前请对照 {@code GenericBuddingBlock} 的历史实现。
+ * <p>
+ * 唯一一种「多消耗一次随机数」的情形是定义写了生长环境（{@link GrowthDefinition#growthEnvironment()}）：
+ * 不在自己的地盘上时，判定通过之后还要再掷一次、按定义给出的概率被打回。没写环境的定义不受影响。
  */
 public final class BuddingGrowthEngine {
 
@@ -120,6 +123,9 @@ public final class BuddingGrowthEngine {
         if (!level.getFluidState(pos).isEmpty() || random.nextInt(definition.chance()) != 0) {
             return null;
         }
+        if (environmentSuppressed(level, pos, random, definition)) {
+            return null;
+        }
 
         Direction side = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
         BlockPos neighborPos = pos.relative(side);
@@ -146,6 +152,9 @@ public final class BuddingGrowthEngine {
         if (random.nextInt(definition.chance()) != 0) {
             return null;
         }
+        if (environmentSuppressed(level, pos, random, definition)) {
+            return null;
+        }
 
         Direction side = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
         BlockPos neighborPos = pos.relative(side);
@@ -165,6 +174,19 @@ public final class BuddingGrowthEngine {
         }
 
         return new Pending(nextBlock, side, true);
+    }
+
+    /**
+     * 生长环境之外的那一次压制判定——返回 true 表示这一轮作废。
+     * <p>
+     * 只有在定义写了生长环境（{@link GrowthDefinition#growthEnvironment()}，维度或群系任一）、
+     * 且当前位置不在其中时才掷这一下：没写环境的母岩（也就是绝大多数）在这里
+     * <b>一次随机数都不消耗</b>，随机数流与没有这个功能时逐位一致。
+     * 环境外还剩多少生长概率由定义给出（石英/荧石母岩是一半，写 0 则出了下界完全不长）。
+     */
+    private static boolean environmentSuppressed(ServerLevel level, BlockPos pos, RandomSource random,
+                                                 GrowthDefinition definition) {
+        return definition.growthEnvironment().suppresses(level, pos, random);
     }
 
     /**

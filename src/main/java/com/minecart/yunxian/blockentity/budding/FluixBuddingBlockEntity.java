@@ -168,8 +168,9 @@ public class FluixBuddingBlockEntity extends AENetworkedPoweredBlockEntity
             tooltip.add(Component.translatable("create_crystal_industry.fluix_budding.unpowered")
                     .withStyle(ChatFormatting.RED));
         }
-        tooltip.add(Component.translatable("create_crystal_industry.fluix_budding.cost",
-                String.format("%.0f", AE_COST_PER_GROWTH)).withStyle(ChatFormatting.GRAY));
+        // 消耗写定性话：具体 AE 数额不上浮窗（与其它母岩信息一个规矩），想算清楚就读配置或挂个能量表
+        tooltip.add(Component.translatable("create_crystal_industry.fluix_budding.cost")
+                .withStyle(ChatFormatting.GRAY));
         return true;
     }
 

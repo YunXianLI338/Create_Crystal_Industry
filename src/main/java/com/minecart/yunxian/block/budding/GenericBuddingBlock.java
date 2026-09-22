@@ -153,7 +153,8 @@ public class GenericBuddingBlock extends BuddingAmethystBlock implements EntityB
 
         // 光照下限留空：家族表的 LightRequirement 只有"无要求 / 必须低于某个亮度"两种，没有下限
         GrowthDefinition built = new GrowthDefinition(smallBud, mediumBud, largeBud, cluster, chance,
-                familyMaxLight(), OptionalInt.empty(), family.growth().rule() == GrowthRule.SUBMERGED);
+                familyMaxLight(), OptionalInt.empty(), family.growth().rule() == GrowthRule.SUBMERGED,
+                family.growth().growthEnvironment());
         cachedChance = chance;
         cachedDefinition = built;
         return built;

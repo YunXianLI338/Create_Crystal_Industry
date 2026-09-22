@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -26,13 +25,13 @@ import com.minecart.yunxian.budding.BuddingFamily.LightRequirement;
 import com.minecart.yunxian.budding.BuddingFamily.Replacement;
 import com.minecart.yunxian.budding.BuddingRegistration;
 import com.minecart.yunxian.budding.GrowthDefinition;
+import com.minecart.yunxian.budding.GrowthEnvironment;
+import com.minecart.yunxian.client.budding.EnvironmentDisplay;
 import com.minecart.yunxian.compat.jei.BuddingInfo.Row;
 import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModTags;
-import com.minecart.yunxian.util.BuddingGrowthHelper;
 import com.mojang.logging.LogUtils;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -41,8 +40,6 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.GameRules;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -164,15 +161,13 @@ public final class BuddingInfoCollector {
 
     /** 带家族特点的母岩：本模组的 13 个家族与附属模组用 {@link GenericBuddingBlock} 建的方块共用这一条路径 */
     private static BuddingInfo fromFamily(GenericBuddingBlock block, BuddingFamily spec, List<Block> stages) {
-        Level level = level();
-
         List<Row> rows = new ArrayList<>();
         rows.add(Row.header(section("growth")));
         rows.addAll(conditions(spec.growth()));
 
         rows.add(Row.header(section("speed")));
         String id = spec.id();
-        rows.addAll(speedRows(ModConfig.Common.growthChance(id), ModConfig.Common.speedFor(id), level));
+        rows.addAll(speedRows(ModConfig.Common.growthChance(id), ModConfig.Common.speedFor(id)));
 
         rows.add(Row.header(section("generation")));
         rows.addAll(GenerationInfoReader.rows(spec));
@@ -182,15 +177,13 @@ public final class BuddingInfoCollector {
 
     /** 带生长定义的母岩：KubeJS 的 {@code CustomBudding} 与声明过定义的低阶方块 */
     private static BuddingInfo fromDefinition(Block block, GrowthDefinition definition, String originKey) {
-        Level level = level();
-
         List<Row> rows = new ArrayList<>();
         rows.add(Row.header(section("growth")));
         rows.addAll(conditions(definition));
 
         rows.add(Row.header(section("speed")));
-        // 脚本/外部定义的概率不由配置文件四档决定，所以没有档位可写
-        rows.addAll(speedRows(definition.chance(), null, level));
+        // 脚本/外部定义的概率不由配置文件四档决定，所以没有档位可写，只给一个最接近的定性词
+        rows.addAll(speedRows(definition.chance(), null));
 
         rows.add(Row.header(section("generation")));
         rows.add(Row.note(Component.translatable(LANG + "generation.none")));
@@ -206,7 +199,7 @@ public final class BuddingInfoCollector {
         rows.add(Row.line(Component.translatable(LANG + "growth.none")));
 
         rows.add(Row.header(section("speed")));
-        rows.addAll(speedRows(VANILLA_CHANCE, null, level()));
+        rows.addAll(speedRows(VANILLA_CHANCE, null));
 
         rows.add(Row.header(section("generation")));
         rows.add(Row.note(Component.translatable(LANG + "origin.amethyst_geode")));
@@ -230,15 +223,18 @@ public final class BuddingInfoCollector {
 
     /** 家族定义里的生长条件：只列非默认项，一条都没有时写「无额外要求」 */
     private static List<Row> conditions(Growth growth) {
-        List<Row> rows = new ArrayList<>(3);
+        List<Row> rows = new ArrayList<>(4);
 
         LightRequirement light = growth.light();
         if (light.kind() == LightRequirement.Kind.BELOW) {
-            // below(t) 的语义是"亮度 < t"，写成人话就是"亮度 ≤ t-1"
-            rows.add(Row.line(Component.translatable(LANG + "growth.light", light.threshold() - 1)));
+            // 只写定性说法：具体亮度阈值留在地图里自己试（below(t) 即"必须比 t 更暗"）
+            rows.add(Row.line(Component.translatable(LANG + "growth.light")));
         }
         if (growth.rule() == GrowthRule.SUBMERGED) {
             rows.add(Row.line(Component.translatable(LANG + "growth.water")));
+        }
+        if (growth.growthEnvironment().restricts()) {
+            rows.addAll(environmentRows(growth.growthEnvironment()));
         }
         if (growth.energy() == EnergyRequirement.AE2_GRID) {
             rows.add(Row.line(Component.translatable(LANG + "growth.energy")));
@@ -263,18 +259,44 @@ public final class BuddingInfoCollector {
 
     /** 生长定义（脚本/外部声明）里的生长条件，与家族定义共用同一套文案键 */
     private static List<Row> conditions(GrowthDefinition definition) {
-        List<Row> rows = new ArrayList<>(2);
+        List<Row> rows = new ArrayList<>(4);
         if (definition.minLight().isPresent()) {
-            rows.add(Row.line(Component.translatable(LANG + "growth.light.min", definition.minLight().getAsInt())));
+            rows.add(Row.line(Component.translatable(LANG + "growth.light.min")));
         }
         if (definition.maxLight().isPresent()) {
-            rows.add(Row.line(Component.translatable(LANG + "growth.light", definition.maxLight().getAsInt())));
+            rows.add(Row.line(Component.translatable(LANG + "growth.light")));
         }
         if (definition.requiresWater()) {
             rows.add(Row.line(Component.translatable(LANG + "growth.water")));
         }
+        if (definition.growthEnvironment().restricts()) {
+            rows.addAll(environmentRows(definition.growthEnvironment()));
+        }
         if (rows.isEmpty()) {
             rows.add(Row.line(Component.translatable(LANG + "growth.none")));
+        }
+        return rows;
+    }
+
+    /**
+     * 「只在这些地方生长得最快」那两条：生长维度一行、生长群系一行，写了几个就并列几个。
+     * 名字与护目镜浮窗共用 {@link EnvironmentDisplay}；地盘外还剩多少概率生长<b>不写进页面</b>
+     * （只说「会受抑制」）。
+     */
+    private static List<Row> environmentRows(GrowthEnvironment environment) {
+        List<Row> rows = new ArrayList<>(3);
+        if (environment.hasDimensions()) {
+            rows.add(Row.line(Component.translatable(LANG + "growth.dimensions",
+                    EnvironmentDisplay.dimensions(environment))));
+        }
+        if (environment.hasIncludedBiomes()) {
+            rows.add(Row.line(Component.translatable(LANG + "growth.biomes",
+                    EnvironmentDisplay.biomes(environment))));
+        }
+        // 否定条件（! 前缀）单独一行：只写否定时没有「只在…」那一行，这一行自己也要读得通
+        if (environment.hasExcludedBiomes()) {
+            rows.add(Row.line(Component.translatable(LANG + "growth.biomes.excluded",
+                    EnvironmentDisplay.excludedBiomes(environment))));
         }
         return rows;
     }
@@ -324,57 +346,28 @@ public final class BuddingInfoCollector {
     // ==================== 生长速度 ====================
 
     /**
-     * 「生长速度」小节——只讲<b>自然</b>生长：每随机刻的概率（含档位）与平均多少秒推进一级。
-     * 催生器带来的倍率不在这里（那是玩家自己摆出来的环境，不是方块固有的脾气）。
+     * 「生长速度」小节——只讲<b>自然</b>生长，而且只给定性说法：档位名（配置文件里的那一档）
+     * 或最接近档位的定性词。催生器带来的倍率不在这里（那是玩家自己摆出来的环境，不是方块固有的脾气）。
+     * <p>
+     * 具体概率（每随机刻 1/n）与「平均多少秒一级」<b>故意不写</b>：数值交给玩家自己在游戏里体会，
+     * 信息页只说「快 / 慢」。
      *
-     * @param tier 配置文件里的档位；null = 该母岩的概率不由四档决定（脚本/外部定义/原版），不显示档位名
+     * @param tier 配置文件里的档位；null = 该母岩的概率不由四档决定（脚本/外部定义/原版），
+     *             那时按 {@link GrowthSpeed#nearest(int)} 归一个定性词
      */
-    private static List<Row> speedRows(int chance, @Nullable GrowthSpeed tier, @Nullable Level level) {
-        List<Row> rows = new ArrayList<>(2);
-
-        rows.add(Row.line(tier == null
-                ? Component.translatable(LANG + "speed.chance", chance)
-                : Component.translatable(LANG + "speed.chance.tier", chance,
-                        Component.translatable(tierKey(tier)))));
-
-        int randomTickSpeed = randomTickSpeed(level);
-        if (randomTickSpeed > 0) {
-            // randomTickSpeed = 0 时自然生长根本不会发生，写"平均多少秒"会误导，直接省掉这一行
-            rows.add(Row.line(Component.translatable(LANG + "speed.average",
-                    format(BuddingGrowthHelper.averageSecondsPerStage(level, chance), SECONDS_INTEGER_THRESHOLD),
-                    randomTickSpeed)));
-        }
-        return rows;
+    private static List<Row> speedRows(int chance, @Nullable GrowthSpeed tier) {
+        return List.of(Row.line(Component.translatable(LANG + "speed.rate",
+                Component.translatable(tier == null ? wordKey(GrowthSpeed.nearest(chance)) : tierKey(tier)))));
     }
 
+    /** 档位名（配置文件里的那一档）：极慢档 / 慢档 / 正常档 / 快档 */
     private static String tierKey(GrowthSpeed tier) {
-        return LANG + "speed.tier." + switch (tier) {
-            case VERY_SLOW -> "very_slow";
-            case SLOW -> "slow";
-            case NORMAL -> "normal";
-            case FAST -> "fast";
-        };
+        return LANG + "speed.tier." + tier.langSuffix();
     }
 
-    /** 秒数：个位数留一位小数，长了就取整——「341 秒」比「341.3 秒」好读 */
-    private static final double SECONDS_INTEGER_THRESHOLD = 10.0;
-
-    /** 秒数取整规则：超过阈值就不留小数 */
-    private static String format(double value, double integerThreshold) {
-        return value >= integerThreshold
-                ? String.format(Locale.ROOT, "%.0f", value)
-                : String.format(Locale.ROOT, "%.1f", value);
-    }
-
-    /** 当前世界的 randomTickSpeed（客户端能读到与服务器同步的游戏规则）；还没进世界时按默认 3 算 */
-    private static int randomTickSpeed(@Nullable Level level) {
-        return level == null ? 3 : level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
-    }
-
-    @Nullable
-    private static Level level() {
-        Minecraft minecraft = Minecraft.getInstance();
-        return minecraft == null ? null : minecraft.level;
+    /** 定性词（不进配置文件的母岩用它）：极其缓慢 / 缓慢 / 普通 / 很快 */
+    private static String wordKey(GrowthSpeed tier) {
+        return LANG + "speed.word." + tier.langSuffix();
     }
 
     // ==================== 组装 ====================

@@ -44,7 +44,10 @@ import org.slf4j.LoggerFactory;
  * CustomBudding.create(event, 'my_crystal', new CustomBuddingOptions()
  *     .chance(20)
  *     .maxLight(7)
- *     .requiresWater())
+ *     .requiresWater()
+ *     .growthDimensions('minecraft:overworld')  // 可多选；与下面那行取交集
+ *     .growthBiomes('warm')                     // 群系 id / '#标签' / 关键字 cold·warm·hot，前面加 ! 是否定
+ *     .outsideGrowthChance(0.1))                // 出了自己的地盘只剩一成概率还在长
  * }</pre>
  * 生成 {@code <命名空间>:<id>_budding} 与 {@code _small_bud} / {@code _medium_bud} / {@code _large_bud} / {@code _cluster}；
  * 母岩的随机刻直接接到本模组的生长引擎上，芽/簇带 {@code FACING} 属性（引擎会写朝向）。
@@ -504,6 +507,27 @@ public final class CustomBudding {
         public int minLight = -1;
         /** 目标格必须含水（可燃冰式） */
         public boolean requiresWater = false;
+        /**
+         * 生长维度 id 列表（如 {@code "minecraft:overworld"}），<b>可以多选</b>：
+         * 只在这些维度里正常生长，出了地盘每次判定通过后再掷一次、只有
+         * {@link #outsideGrowthChance} 的概率继续生长。null / 不写 = 维度不限。
+         */
+        public @Nullable String[] growthDimensions = null;
+        /**
+         * 生长群系条件，<b>可以多选</b>：具体群系 id（{@code "minecraft:lush_caves"}）、
+         * 群系标签（{@code "#minecraft:is_nether"}）、内置气候关键字
+         * （{@code "cold"} 寒冷 / {@code "warm"} 温暖 / {@code "hot"} 炎热；下界全域算炎热、末地全域算寒冷），
+         * 或者它们前面加 {@code !} 表示<b>否定</b>（{@code "!cold"} = 只要不是寒冷群系就行）。
+         * 与 {@link #growthDimensions} 都写时<b>取交集</b>——维度、群系都满足才算在自己的地盘上。
+         * null / 不写 = 群系不限。
+         */
+        public @Nullable String[] growthBiomes = null;
+        /**
+         * 自己的地盘<b>之外</b>的生长概率：0–1 的小数
+         * （默认 0.5 = 一半；0 = 出了地盘就再也长不动）。只有写了 {@link #growthDimensions} 或
+         * {@link #growthBiomes} 才有意义。
+         */
+        public double outsideGrowthChance = 0.5;
         /** 母岩的显示名；null = 交给 KubeJS 按 id 自动命名 */
         public @Nullable String displayName = null;
         /**
@@ -603,6 +627,35 @@ public final class CustomBudding {
         /** 显式给值：{@code requiresWater(false)} 可以改回不需要水 */
         public Options requiresWater(boolean value) {
             this.requiresWater = value;
+            return this;
+        }
+
+        /**
+         * 生长维度 id，<b>可多选</b>（{@code .growthDimensions('minecraft:overworld', 'minecraft:nether')}）；
+         * 一个都不传 = 维度不限。地盘外的生长概率用 {@link #outsideGrowthChance(double)} 调。
+         */
+        public Options growthDimensions(@Nullable String... dimensions) {
+            this.growthDimensions = dimensions;
+            return this;
+        }
+
+        /**
+         * 生长群系条件，<b>可多选</b>：具体群系 id、群系标签、气候关键字（{@code cold} / {@code warm} / {@code hot}），
+         * 或它们前面加 {@code !} 表示否定
+         * （{@code .growthBiomes('minecraft:lush_caves', '!#minecraft:is_taiga', '!cold', '!hot')}）；
+         * 一个都不传 = 群系不限。与 {@link #growthDimensions(String...)} 都写时取交集。
+         */
+        public Options growthBiomes(@Nullable String... biomes) {
+            this.growthBiomes = biomes;
+            return this;
+        }
+
+        /**
+         * 自己的地盘<b>之外</b>的生长概率：0–1 的小数
+         * （默认 0.5 = 一半；0 = 出了地盘就再也长不动）。
+         */
+        public Options outsideGrowthChance(double chance) {
+            this.outsideGrowthChance = chance;
             return this;
         }
 
@@ -711,6 +764,9 @@ public final class CustomBudding {
         private final int maxLight;
         private final int minLight;
         private final boolean requiresWater;
+        private final @Nullable String[] growthDimensions;
+        private final @Nullable String[] growthBiomes;
+        private final double outsideGrowthChance;
 
         private GrowthDefinition cached;
 
@@ -721,6 +777,9 @@ public final class CustomBudding {
             this.maxLight = options.maxLight;
             this.minLight = options.minLight;
             this.requiresWater = options.requiresWater;
+            this.growthDimensions = options.growthDimensions;
+            this.growthBiomes = options.growthBiomes;
+            this.outsideGrowthChance = options.outsideGrowthChance;
         }
 
         @Override
@@ -730,6 +789,18 @@ public final class CustomBudding {
                 definition = GrowthDefinition.of(stages[0].toString(), stages[1].toString(),
                         stages[2].toString(), stages[3].toString(), chance, maxLight, minLight,
                         requiresWater);
+                // 维度与群系 id 都在这里才解析（构造定义时方块已注册完，与其余字段同样对待）；
+                // 两者都写时取交集，所以两个列表分别点它们的链式方法
+                if (growthDimensions != null && growthDimensions.length > 0) {
+                    definition = definition.growthDimensions(growthDimensions);
+                }
+                if (growthBiomes != null && growthBiomes.length > 0) {
+                    definition = definition.growthBiomes(growthBiomes);
+                }
+                if ((growthDimensions != null && growthDimensions.length > 0)
+                        || (growthBiomes != null && growthBiomes.length > 0)) {
+                    definition = definition.outsideGrowthChance(outsideGrowthChance);
+                }
                 cached = definition;
             }
             return definition;

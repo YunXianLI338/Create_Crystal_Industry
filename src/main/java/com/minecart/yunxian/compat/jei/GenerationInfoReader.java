@@ -13,6 +13,7 @@ import com.google.gson.JsonObject;
 import com.minecart.yunxian.Yunxian;
 import com.minecart.yunxian.budding.BuddingFamily;
 import com.minecart.yunxian.budding.BuddingFamily.WorldGen;
+import com.minecart.yunxian.client.budding.EnvironmentDisplay;
 import com.minecart.yunxian.compat.jei.BuddingInfo.Row;
 import com.minecart.yunxian.config.ModConfig;
 import com.mojang.logging.LogUtils;
@@ -39,6 +40,9 @@ import net.minecraft.world.level.biome.Biome;
  * 与 {@code data/create_crystal_industry/neoforge/biome_modifier/<biomeModifier>.json}（在哪些生物群系里加它），
  * 文件名都来自 {@link BuddingFamily#worldGen()}——所以改了 JSON、重新构建后页面就跟着变，
  * 不存在「文档与现实漂移」。读取方式见 {@link InfoJson}（客户端读不到 {@code data/}，只能读自己的 mod 文件）。
+ * <p>
+ * <b>读出来的数值不直接上页面</b>：高度范围折成「深层地下 / 地表附近」这类位置词，
+ * 稀有度折成「极为罕见 / 分布稀疏」，数据本身留给玩家自己在世界里摸（见 {@link #describeExtent}）。
  * <p>
  * 方块类里没有对应 feature 的母岩（荧石走原版荧石团的替换、玫瑰石英只有配方、福鲁伊克斯靠扩散）
  * 显示「不自然生成」+ 可选的 {@code origin.<id>} 手写补充行。
@@ -160,17 +164,21 @@ final class GenerationInfoReader {
         return placement;
     }
 
-    /** 「高度：Y -24 ~ Y 56 · 每区块 1/16」合成一行；两者都没有（比如按海床放置的）返回 null */
+    /**
+     * 「生成高度：深层地下 · 极为罕见」合成一行；两者都没有（比如按海床放置的）返回 null。
+     * <p>
+     * 只给定性说法：JSON 里的具体数值（Y -24 ~ 56、每区块 1/16）<b>故意不写进页面</b>，
+     * 由 {@link #heightBand}/{@link #densityWord} 折算成「深层地下」「分布稀疏」这类词。
+     */
     @Nullable
     private static Component describeExtent(Placement placement) {
         List<Component> parts = new ArrayList<>(2);
         if (placement.minHeight != null && placement.maxHeight != null) {
-            parts.add(Component.translatable(LANG + "generation.height", placement.minHeight, placement.maxHeight));
+            parts.add(Component.translatable(LANG + "generation.height", describeHeightExtent(placement)));
         }
-        if (placement.rarity > 0) {
-            parts.add(Component.translatable(LANG + "generation.rarity", placement.rarity));
-        } else if (placement.count > 1) {
-            parts.add(Component.translatable(LANG + "generation.count", placement.count));
+        Component density = densityWord(placement);
+        if (density != null) {
+            parts.add(density);
         }
 
         if (parts.isEmpty()) {
@@ -186,6 +194,45 @@ final class GenerationInfoReader {
         return joined;
     }
 
+    /**
+     * 上下界各自折算成一个词，合成「深层地下 到 地表附近」；两端落在同一段就只写一个词。
+     * 认得出来的写法只有绝对高度与相对基岩/顶部的偏移，其余（梯形分布等）在读数时就已被丢弃。
+     */
+    private static Component describeHeightExtent(Placement placement) {
+        Component min = placement.minHeight;
+        Component max = placement.maxHeight;
+        if (min == null || max == null || min.getString().equals(max.getString())) {
+            return min == null ? max : min;
+        }
+        return Component.translatable(LANG + "generation.height.range", min, max);
+    }
+
+    /**
+     * 稀有度 / 每区块尝试次数 → 一个定性词；两者都没有（正常密度）返回 null。
+     * <p>
+     * rarity_filter 的 1/n 越大越罕见，所以只按数量级分档；没有 rarity_filter 但 count &gt; 1
+     * 的那种（回响母岩在一片区域里放好几处）说成「成片出现」。
+     */
+    @Nullable
+    private static Component densityWord(Placement placement) {
+        if (placement.rarity > 0) {
+            String word = placement.rarity >= VERY_RARE_CHANCE ? "very_rare"
+                    : placement.rarity >= RARE_CHANCE ? "rare"
+                    : placement.rarity >= SPARSE_CHANCE ? "sparse" : "scattered";
+            return Component.translatable(LANG + "generation.density." + word);
+        }
+        return placement.count > CLUSTERED_COUNT
+                ? Component.translatable(LANG + "generation.density.clustered")
+                : null;
+    }
+
+    /** 稀有度分档：1/16 以上「极为罕见」、1/8 以上「十分罕见」、1/4 以上「分布稀疏」，再密就是「零散可见」 */
+    private static final int VERY_RARE_CHANCE = 16;
+    private static final int RARE_CHANCE = 8;
+    private static final int SPARSE_CHANCE = 4;
+    /** 每区块尝试次数超过这个数就说「成片出现」 */
+    private static final int CLUSTERED_COUNT = 4;
+
     private static Component joinUnknown(Placement placement) {
         List<Component> types = placement.unknownTypes.subList(0,
                 Math.min(MAX_UNKNOWN_SHOWN, placement.unknownTypes.size()));
@@ -199,28 +246,45 @@ final class GenerationInfoReader {
         // 两种写法：常量 {"absolute": 16}，或 uniform 分布 {"type":"minecraft:uniform","min_inclusive":…,"max_inclusive":…}
         JsonObject min = height.has("min_inclusive") ? height.getAsJsonObject("min_inclusive") : height;
         JsonObject max = height.has("max_inclusive") ? height.getAsJsonObject("max_inclusive") : height;
-        placement.minHeight = describeHeightBound(min);
-        placement.maxHeight = describeHeightBound(max);
+        placement.minHeight = heightBand(min);
+        placement.maxHeight = heightBand(max);
     }
 
-    /** {@code {"absolute":-24}} → 「Y -24」；{@code above_bottom/below_top} → 相对基岩 / 相对顶部的高度 */
+    /**
+     * 高度上/下界 → 一个定性词。
+     * <p>
+     * {@code {"absolute":-24}} 按 Y 分成「深层地下 / 地下 / 地表附近 / 高空」；
+     * {@code above_bottom}/{@code below_top} 是"相对基岩 / 相对维度顶部"的写法（下界那条 feature 用它），
+     * 折成「贴近基岩处」「贴近维度顶部」。写成别的提供器（梯形分布一类）就宁可不显示高度。
+     */
     @Nullable
-    private static Component describeHeightBound(@Nullable JsonObject bound) {
+    private static Component heightBand(@Nullable JsonObject bound) {
         if (bound == null) {
             return null;
         }
         if (bound.has("absolute")) {
-            return Component.literal("Y " + asInt(bound.get("absolute")));
+            int y = asInt(bound.get("absolute"));
+            String band = y < DEEP_ABOVE ? "deep" : y < UNDERGROUND_ABOVE ? "under"
+                    : y < SURFACE_ABOVE ? "surface" : "high";
+            return Component.translatable(LANG + "generation.height.band." + band);
         }
         if (bound.has("above_bottom")) {
-            return Component.translatable(LANG + "height.above_bottom", asInt(bound.get("above_bottom")));
+            return Component.translatable(LANG + (asInt(bound.get("above_bottom")) < NEAR_EDGE
+                    ? "generation.height.band.bedrock" : "generation.height.band.deep"));
         }
         if (bound.has("below_top")) {
-            return Component.translatable(LANG + "height.below_top", asInt(bound.get("below_top")));
+            return Component.translatable(LANG + (asInt(bound.get("below_top")) < NEAR_EDGE
+                    ? "generation.height.band.top" : "generation.height.band.high"));
         }
-        // 认不出来的写法（梯形分布一类的提供器）：宁可不显示高度
         return null;
     }
+
+    /** 绝对高度分段的边界（Y 越大越靠上）：0 以下算「深层地下」、40 以下「地下」、70 以下「地表附近」 */
+    private static final int DEEP_ABOVE = 0;
+    private static final int UNDERGROUND_ABOVE = 40;
+    private static final int SURFACE_ABOVE = 70;
+    /** 相对基岩 / 相对顶部偏移多少层以内算「贴近」 */
+    private static final int NEAR_EDGE = 24;
 
     private static int countOf(@Nullable JsonElement element) {
         // count 可以是数字，也可以是 {"type":"minecraft:uniform",…} 这类提供器——后者我们不做数
@@ -266,9 +330,21 @@ final class GenerationInfoReader {
                     return summarize(members);
                 }
             }
-            return Component.literal(id);
+            return biomeLabel(id);
         }
         return summarize(ids);
+    }
+
+    /**
+     * 群系 id → 显示名：走原版就有的 {@code biome.<命名空间>.<路径>} 语言键（「下界荒地」），
+     * 查不到就照实写 id——与「生长群系」那一行同一套名字（见 {@link EnvironmentDisplay}）。
+     * 整合包写错的 id 因此也会原样显示出来，不会被悄悄替换成别的名字。
+     */
+    private static Component biomeLabel(String id) {
+        ResourceLocation location = ResourceLocation.tryParse(id);
+        return location == null
+                ? Component.literal(id)
+                : EnvironmentDisplay.biomeName(ResourceKey.create(Registries.BIOME, location));
     }
 
     /** 展开 {@code #minecraft:is_overworld} 这类标签；群系注册表在客户端有同步，取不到就返回空（退回显示标签名） */
@@ -298,7 +374,7 @@ final class GenerationInfoReader {
     private static Component summarize(List<String> ids) {
         List<Component> names = new ArrayList<>(ids.size());
         for (String id : ids) {
-            names.add(Component.literal(id));
+            names.add(biomeLabel(id));
         }
         return BuddingInfoText.summarize(names);
     }

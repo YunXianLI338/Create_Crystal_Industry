@@ -41,7 +41,8 @@ public final class ModCreativeTabs {
                         output.accept(ModBlocks.MECHANICAL_ACCELERATOR.get());
                         output.accept(ModBlocks.SMART_DRILL.get());
                         output.accept(ModBlocks.MECHANICAL_CLEANER.get());
-                        output.accept(ModBlocks.CRYSTAL_BATTERY.get());
+                        // 水晶电池还是半成品，暂时不上物品栏（方块与物品仍在注册表里，/give 能拿到）；
+                        // 做完之后把这一行加回来即可
                         output.accept(ModItems.ECHO_SPYGLASS.get());
                         output.accept(ModItems.NIGHT_VISION_GOGGLES.get());
 

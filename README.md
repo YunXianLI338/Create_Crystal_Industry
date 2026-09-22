@@ -18,8 +18,9 @@
 
 | 母岩 | 额外生长条件 |
 | --- | --- |
-| 粗铁、粗金、粗铜、粗锌、钻石、绿宝石、青金石、红石、石英 | — |
-| 荧石、玫瑰石英 | — |
+| 粗铁、粗金、粗铜、粗锌、钻石、绿宝石、青金石、红石 | — |
+| 玫瑰石英 | — |
+| 石英、荧石 | 只在下界满速：其它维度每次判定通过后再掷 1/2 失败 |
 | 可燃冰 | 芽体必须浸在水中，离水即停止进阶 |
 | 回响 | 生长格光照必须为 0 |
 | 福鲁伊克斯（需 AE2） | 必须接入已激活的 ME 网络，每次生长消耗 AE |
@@ -28,7 +29,7 @@
 
 ### 母岩本身也能再生
 
-这才是关键：矿石母岩会以 **1/20** 的概率把周围 3×3×3 内的石头/深板岩转化为**对应矿石**；再以极低概率把对应的粗矿块"传染"成新的母岩。石英母岩侵蚀闪长岩，回响母岩把泥土、石头、凝灰岩等转化为幽匿。
+这才是关键：矿石母岩会以 **1/20** 的概率把周围 3×3×3 内的石头/深板岩转化为**对应矿石**；再以极低概率把对应的粗矿块"传染"成新的母岩。石英母岩侵蚀的是下界岩（→ 石英矿），回响母岩把泥土、石头、凝灰岩等转化为幽匿。
 
 **一块母岩 = 一座会自己扩张的矿脉。**
 
@@ -82,9 +83,9 @@
 **JEI 里的「母岩信息」页**：一块母岩一页——左边是母岩（晶簇长在它的顶面上，方块垫在 Create 自己那块 JEI
 阴影贴图上）、晶簇的产物摆在左上角栏位里
 （栏位右侧一支 Create 同款的箭头，箭头与阴影都取自 Create 的 JEI 贴图 `gui/jei/widgets.png`），
-右边写明 **生长条件 / 生长速度 / 生成条件**
-（生长速度只讲自然生长：每随机刻的概率与档位、按当前 randomTickSpeed 平均多少秒推进一级；
-生成条件含生物群系、高度范围、每区块概率与配置开关）。
+右边写明 **生长条件 / 生长速度 / 生成条件**。
+三节都**只说定性话，不报具体数值**——生长速度写作「正常档 / 缓慢 / 很快」，生成条件写作「深层地下 · 极为罕见」——
+概率、秒数、Y 坐标这些数字留给玩家自己在世界里摸（想让整合包重新看到精确数字就自己写个 JEI 插件页，或查配置文件）。
 母岩、各级芽/晶簇与**晶簇产物**都能反查：在 JEI 里对着它们按 R 或 U 都会翻到这一页。
 生成条件与晶簇产物都是**运行时读模组自己的 JSON**（世界生成 / 掉落表）得来的，改了 JSON、重新构建后页面就跟着变，
 不会和实际生成漂移（客户端看不到数据包里的 `data/`，所以整合包覆盖同名文件时页面不跟着变）；
@@ -106,7 +107,7 @@ StartupEvents.registry('block', event => {
 生成的方块：`kubejs:example_crystal_budding` 以及 `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`；
 母岩的随机刻已经接到生长引擎上，芽/簇自带 `FACING` 属性（朝母岩的方向长）。
 `id` 可以带命名空间（`'mypack:example_crystal'`），不带就落在 `kubejs` 命名空间。
-整族五个方块还会**自动出现在 JEI 的「母岩信息」页**里——概率、光照、含水要求都照实列出，不需要额外声明。
+整族五个方块还会**自动出现在 JEI 的「母岩信息」页**里——生长速度、光照要求、含水要求都会列出来（只给「缓慢」「必须足够暗」这类定性说法），不需要额外声明。
 
 ### 完整示例（复制即用）
 
@@ -127,6 +128,11 @@ StartupEvents.registry('block', event => {
                                                  // 两行一起写 = 只有亮度 1–7 才推进；只写一行 = 只管那一端
                                                  // （回响那种「必须全黑」就是只写 .maxLight(0)）；下限高于上限会直接报错
     .requiresWater(false)                        // 默认 false = 不需要水；可燃冰式写 .requiresWater()（目标格必须是水源）
+    .growthDimensions('minecraft:overworld')     // 生长维度 id，可多选：只在这些维度里正常生长；不写 = 维度不限
+    .growthBiomes('warm')                        // 生长群系：群系 id / 群系标签（'#minecraft:is_nether'）/ 气候关键字（'cold' 'warm' 'hot'）
+                                                 // 前面加 ! 就是否定：'!cold'（只要不是寒冷群系就行）、'!hot'、'!#minecraft:is_taiga'
+                                                 // 两行都写时取交集 => 这里 = 只有「主世界的温暖群系」算自己的地盘
+    .outsideGrowthChance(0.1)                    // 地盘之外还剩多少概率生长（0~1，默认 0.5；0 = 出了地盘就完全不长）；没写上面两行时这一项无意义
     .displayName('示例母岩')                      // 不写就交给 KubeJS 按 id 自动命名
     .stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')   // 四个芽/簇的名字，顺序：小 → 中 → 大 → 簇；某一项传 null 就保持自动命名
     .dropItem('mypack:my_shard', 2)              // 晶簇普通破坏掉的物品与数量（时运每级再加 0~等级 个；精准采集始终掉晶簇本体；不写则什么都不掉）
@@ -143,12 +149,30 @@ StartupEvents.registry('block', event => {
     .stageLevel('stone')                         // 芽与晶簇的开采等级，四个阶段共用一个；写法同上
     .group('building_blocks'))                   // 创造栏：默认 'kubejs'，null = 不进任何页（只能 /give）
 
-  // family 里是五个方块 id，接着写配方 / 标签 / 掉落表都行（取法见下面的说明）
+  // family 里是五个方块 id（record 访问器，括号不能省）：
+  const budding = family.budding()               // 'mypack:example_crystal_budding'
+  const cluster = family.cluster()               // 'mypack:example_crystal_cluster'
+  console.info(`注册好了：${budding} / ${cluster}`)
+})
+```
+
+方块 id 是有规律的：`<命名空间>:<id>_budding` 与 `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`
+（上面这个例子就是 `mypack:example_crystal_*`）。**配方与标签写在 `server_scripts/` 里**（启动脚本里没有这些事件），
+直接用这些 id 字符串即可，不用回头找 `family`：
+
+```js
+// kubejs/server_scripts/my_crystal.js
+ServerEvents.recipes(event => {
+  event.smelting('minecraft:amethyst_shard', 'mypack:example_crystal_cluster')   // 举例：晶簇烧成紫水晶碎片
+})
+
+ServerEvents.tags('block', event => {
+  event.add('minecraft:mineable/axe', 'mypack:example_crystal_budding')          // 举例：再挂一个挖掘标签
 })
 ```
 
 - **名字**：母岩用 `displayName('示例母岩')`；四个芽/簇默认是 KubeJS 按 id 生成的英文标题（`example_crystal_small_bud` → "Example Crystal Small Bud"），要改就 `stageDisplayNames('小芽', '中芽', '大芽', '紫晶簇')`——顺序是小 → 中 → 大 → 簇，某一项传 `null` 就那一项保持自动命名，可以只给其中几个起名。方块物品与方块共用一个名字，背包、掉落物、创造栏会一起变。
-- **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长速度，外加它配置的生长概率 / 光照要求 / 含水要求（自带家族只显示速度那一行）。
+- **护目镜**：戴上 Create 护目镜看你的母岩，会显示当前生长倍率，外加它的生长速度、光照要求、含水要求、生长环境（维度 / 群系，只给定性说法，不报具体数值）。自带家族平时只显示倍率那一行，写了 `.growthDimensions(...)` / `.growthBiomes(...)` 或本身就是石英/荧石母岩的会多出「只在 X 生长得最快」的行。
 - **默认贴图借用原版紫水晶那一套**，所以什么都不画也能跑；要自己的外观就改上面的贴图选项或用资源包。
 - **音效、开采工具与开采等级也默认照抄原版紫水晶**（紫水晶破坏音效、镐、不设等级）：
   - 破坏音效写**原版音效名**——`buddingSound('stone')` 只管母岩，`stageSound('crop')` 管四个芽/簇（共用一个）；
@@ -172,7 +196,8 @@ StartupEvents.registry('block', event => {
   **数量受时运加成**：每一级额外给 0~等级 个，与自带晶簇的掉落表一致），精准采集掉本体——与本模组自带芽/簇的行为一致。
 - 返回值 `family` 里有五个方块 id，用 record 访问器取：`family.budding()` / `family.smallBud()` /
   `family.mediumBud()` / `family.largeBud()` / `family.cluster()`——是**方法调用，括号不能省**，
-  写成 `family.budding` 拿到的是方法对象而不是 id。方便接着写配方、标签、掉落表。
+  写成 `family.budding` 拿到的是方法对象而不是 id。启动脚本里再注册别的东西时用得上；
+  **配方与标签在 `server_scripts/` 里写**，那边直接用上面这套 id 字符串就行（见示例结尾）。
 - **标签自动加**：母岩自动进 `#c:budding_blocks`（方块 + 物品），五个方块按 `buddingTool(...)` / `stageTool(...)` 进对应的挖掘标签、按 `buddingLevel(...)` / `stageLevel(...)` 进对应的等级标签（默认只有 `#minecraft:mineable/pickaxe`，不挂等级；一律只挂方块、不挂物品）——于是智能钻头的精准采集能直接采下你的母岩本体，AE2 晶体催生器也会加速它，不用手写标签。
 - 名字与外观走资源包 / lang（方块在 `kubejs` 或你自己的命名空间下）；掉落由本模组按上面的规则接管。
 
@@ -187,21 +212,28 @@ StartupEvents.registry('block', event => {
 const BuddingGrowthEngine = Java.loadClass('com.minecart.yunxian.budding.BuddingGrowthEngine')
 const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDefinition')
 
-// 自己的方块 + 自己指定的四个阶段方块（原版紫水晶芽、本模组的芽/簇、你注册的方块都行）
+// of(小, 中, 大, 簇, n)：四个阶段方块 + 概率基数 n（每次随机刻有 1/n 的概率推进一级）。
+// 阶段方块直接写 id（原版紫水晶芽、本模组的芽/簇、你自己注册的方块都行）；
+// 返回的是定义本身，后面可以接着点光照 / 含水 / 生长环境，一路链下去：
 const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
                                        'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
+    .growthDimensions('minecraft:overworld')   // 生长维度，可多选
+    .growthBiomes('warm', '!hot')              // 生长群系：id / '#标签' / 关键字 cold·warm·hot；! 是否定
+    .outsideGrowthChance(0.1)                  // 出了自己的地盘还剩多少概率继续长（0 = 完全不长，1 = 不限）
 
-// 光照与含水也可以一并给出（都是可选参数；亮度 0–15，负数 = 那一端不限制）：
-//   of(小, 中, 大, 簇, n, 亮度上限, 需要水源)          —— 只管上限
-//   of(小, 中, 大, 簇, n, 亮度上限, 亮度下限, 需要水源)  —— 上下限构成闭区间，下限不能高于上限
-// const dim = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
-//                                 'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster',
-//                                 20, 7, 1, false)   // 生长位亮度 1–7 才推进
+// 光照与含水也在这条链上（亮度 0–15，负数 = 那一端不限制；下限高于上限会直接报错）：
+//   .maxLight(7).minLight(1)   // 只有亮度 1–7 才推进（回响那种「必须全黑」就是只写 .maxLight(0)）
+//   .requiresWater()           // 目标格必须是水源（可燃冰式）
+// 想只用 of 的完整重载也可以：of(小, 中, 大, 簇, n, 亮度上限, 亮度下限, 需要水源)，
+// 只给上限时省略下限那一项：of(小, 中, 大, 簇, n, 亮度上限, 需要水源)。
 
 event.create('my_budding').randomTick(ctx => {
   BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
 })
 ```
+
+> ⚠️ 上面把定义写在脚本顶层是安全的（阶段方块是原版或你自己注册的）。**若定义里引用了其它模组的方块**，
+> 必须挪进 `randomTick` 回调里构造并缓存一次——脚本执行时那些模组方块还没注册，写在顶层会当场报错。
 
 可跑的完整示例见上面的「完整示例（复制即用）」；本地开发目录里另有一份
 `run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
@@ -250,11 +282,11 @@ BuddingRegistration.declareKnownId("my_budding");           // 让配置文件�
 `BlockEntityType#isValid`（`LevelChunk:392`），不在共享 BE 合法方块表里的方块，
 其方块实体会在**区块重载后被丢弃**（护目镜随即失效）。
 
-用了 `GenericBuddingBlock` 的方块到上面两步就齐了：它自带家族定义，JEI 的母岩信息页能直接读出参数。
+用了 `GenericBuddingBlock` 的方块到上面两步就齐了：它自带家族定义，JEI 的母岩信息页能直接读出它的脾气。
 **自己拼低阶接口**（自己实现 `randomTick` 调引擎）的方块没有定义可读，再补一次声明即可：
 
 ```java
-// 3) 让 JEI 的「母岩信息」页也能列出它的概率 / 光照 / 含水要求
+// 3) 让 JEI 的「母岩信息」页也能列出它的生长速度 / 光照 / 含水要求
 BuddingRegistration.declareGrowthDefinition(myBudding.get(),
         () -> GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
 ```
@@ -266,7 +298,7 @@ BuddingRegistration.declareGrowthDefinition(myBudding.get(),
 见上一节「加自己的母岩（KubeJS）」：装机后脚本里一行 `CustomBudding.create(event, 'my_crystal', 20)`
 就注册出整族五个方块（本模组的 KubeJS 插件提供的绑定）；
 要自己拼低阶方块时可用 `GrowthDefinition.of(小芽, 中芽, 大芽, 晶簇, n)` + 引擎
-（后面还能再补光照上下限与含水要求，见上一节的示例）。
+（后面还能再补光照上下限、含水要求与生长环境（维度 / 群系），见上一节的示例）。
 可跑的完整示例见「加自己的母岩（KubeJS）」一节；本地开发目录里另有一份
 `run/kubejs/startup_scripts/custom_budding_example.js`（`run/` 在 `.gitignore` 里，不随仓库分发）。
 
@@ -279,6 +311,27 @@ BuddingGrowthEngine.tryGrow(level, pos, random, GrowthDefinition.of(smallBud, me
 // 带付费钩子（本模组自带家族走这条：AE2 母岩在放置前扣能量）
 BuddingGrowthEngine.tryGrow(serverLevel, pos, random, definition, gate);
 ```
+
+定义本身还能继续追加门槛：`growthDimensions(Level.NETHER)` 让方块只在列出的维度正常生长，
+`growthBiomes("minecraft:lush_caves")` 再按群系收一道（群系条目支持 `#标签`、气候关键字 `cold` / `warm` / `hot`，
+以及前面加 `!` 的**否定**写法，如 `"!cold"`、`"!hot"`、`"!#minecraft:is_taiga"`）。
+维度与群系都写时取交集；出了地盘每次判定通过后再掷一次、只剩 `outsideGrowthChance(0.5)` 的概率继续生长
+（0.5 就是石英/荧石母岩的写法，写 0 则出了那些地方再也长不动）。
+
+群系条目的判定顺序：命中任一**否定**项 → 直接出局；否则至少命中一条**肯定**项才算满足；
+只写否定项时，肯定那一侧视为「全部群系」（`growthBiomes("!cold")` = 除了寒冷群系哪里都长）。
+
+**气候关键字**（`cold` / `warm` / `hot`）的分档规则：
+
+| 关键字 | 覆盖范围 |
+| --- | --- |
+| `cold` | **末地全域**，或群系基础温度 &lt; 0.3（雪原、冰刺、雪针叶林、冰洋、雪坡、冻峰，以及针叶林、山地这类寒凉群系） |
+| `warm` | 剩下的（平原、森林、丛林、沼泽、海洋、蘑菇岛、裸岩峰…） |
+| `hot` | **下界全域**，或群系基础温度 ≥ 1.2（沙漠、恶地、热带草原） |
+
+判据里「末地/下界全域」走的是群系标签（`#minecraft:is_end` / `#minecraft:is_nether`），
+所以用这两套群系的模组维度同样算数；阈值想调（比如把丛林拉进 `hot`）就改
+`GrowthEnvironment.Climate` 里的两个常量。
 
 其余资源自备：方块的注册与贴图、物品、掉落表、以及把方块加进 `#c:budding_blocks`
 标签（智能钻头精准采集与 AE2 晶体催生器读它）。

@@ -1,6 +1,7 @@
 package com.minecart.yunxian.budding;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
@@ -83,7 +84,15 @@ public record BuddingFamily(
             /** 芽与晶簇的方块类型 */
             ClusterKind clusterKind,
             /** 母岩自身输出的红石强度，0 = 不输出（红石母岩为 15） */
-            int buddingSignal) {
+            int buddingSignal,
+            /**
+             * 生长环境要求（维度 + 群系）：只在列出的维度/群系里正常生长，出了地盘每次判定通过后再掷一次、
+             * 只剩 {@link GrowthEnvironment#outsideGrowthChance()} 的概率继续生长。
+             * {@link GrowthEnvironment#ANY}（大部分家族）= 哪里都一样长。
+             * <p>
+             * 石英母岩与荧石母岩写「只在下界、其它地方一半被打回」——它们是下界特产，搬去主世界就该减产。
+             */
+            GrowthEnvironment growthEnvironment) {
     }
 
     // ==================== 外观与注册特点 ====================
@@ -174,6 +183,32 @@ public record BuddingFamily(
         public String configKey() {
             return configKey;
         }
+
+        /**
+         * 把概率基数归到最接近的档位——给<b>不进配置文件</b>的母岩（脚本、附属模组声明的定义、原版紫水晶）
+         * 用：界面只报档位/档位的定性说法（「缓慢」「很快」），不写具体概率。
+         * <p>
+         * 例如 2–5 归 {@link #NORMAL}、6–20 归 {@link #SLOW}、大于 50 归 {@link #VERY_SLOW}。
+         */
+        public static GrowthSpeed nearest(int chance) {
+            for (GrowthSpeed tier : FAST_TO_SLOW) {
+                if (chance <= tier.chance) {
+                    return tier;
+                }
+            }
+            return VERY_SLOW;
+        }
+
+        /**
+         * 界面语言键的后缀（枚举名的小写）：{@code speed.tier.<后缀>}、{@code speed.word.<后缀>}
+         * 与 {@code goggles.scripted.speed.<后缀>} 都拼它，免得三处各写一份 switch。
+         */
+        public String langSuffix() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
+        /** 由快到慢，供 {@link #nearest(int)} 顺序查找（枚举常量初始化后才由静态块赋值） */
+        private static final GrowthSpeed[] FAST_TO_SLOW = {FAST, NORMAL, SLOW};
     }
 
     /** 生长规则 */
