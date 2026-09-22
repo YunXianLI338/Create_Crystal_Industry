@@ -113,7 +113,7 @@
     "create_crystal_industry.goggles.scripted.speed.normal": "普通",
     "create_crystal_industry.goggles.scripted.speed.fast": "很快",
     "create_crystal_industry.goggles.scripted.max_light": "光照要求: 生长格必须足够暗",
-    "create_crystal_industry.goggles.scripted.min_light": "光照要求: 生长格不能完全无光",
+    "create_crystal_industry.goggles.scripted.min_light": "光照要求: 生长格需要有一定光照",
     "create_crystal_industry.goggles.scripted.requires_water": "含水要求: 生长格必须是水源",
     "create_crystal_industry.goggles.growth_dimensions": "只在 %s 生长得最快，其它维度受抑制",
     "create_crystal_industry.goggles.growth_biomes": "只在 %s 这些群系里生长得最快，其它地方受抑制",
