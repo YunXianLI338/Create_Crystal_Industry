@@ -1,2 +1,7 @@
-// 1.21.1	2026-09-16T22:43:30.7706898	Tags for minecraft:item mod id create_crystal_industry
+// 1.21.1	2026-09-22T22:17:53.9088618	Tags for minecraft:item mod id create_crystal_industry
+6e3abb4e200de58ca91e4c78225d9b59b2add5dc data/create_crystal_industry/tags/item/battery_crystal.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/create_crystal_industry/tags/item/battery_crystal/extreme_capacity.json
+df944c9fec7233542a5e463a28e4a0233c3c5599 data/create_crystal_industry/tags/item/battery_crystal/high_capacity.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/create_crystal_industry/tags/item/battery_crystal/low_capacity.json
+e375981ddd70e65f5e3e139ec752e310ff0a8b27 data/create_crystal_industry/tags/item/battery_crystal/medium_capacity.json
 f17012c0cf0e0d2ff15db09c93ec38a33a402b83 data/c/tags/item/budding_blocks.json

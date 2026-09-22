@@ -107,83 +107,104 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
     }
 
     /**
-     * 普通右键：给整座电池里所有还空着的格子各塞一颗晶体，手上有多少塞多少，一格一颗。
-     * 被右键的那一格优先保证——万一手上的晶体不够填满整座，至少点中的那格一定装上，不会让人白点。
+     * 装/换晶体：凡是「装的不是手上这颗」的格子都处理——空格子直接装上，装的是别的晶体的换成手上这颗，
+     * 换下来的旧晶体还给玩家（走背包，背包满了会自动掉在脚下）。手上有多少颗就处理多少格，一格一颗。
+     * 被右键的那一格优先保证，万一手上的晶体不够换完整座，至少点中的那格一定换到。
+     * <p>
+     * 已经是同一种晶体的格子会被跳过，不会自己换自己、白扣一颗。
      *
-     * @return 实际塞进去的数量
+     * @param onlyThisSlot true = 只处理被点的那一格（潜行右键），false = 整座结构
+     * @return 实际改动的格子数
      */
-    public int fillEmptySlots(ItemStack stack, Player player) {
-        return fill(stack, player, false);
-    }
-
-    /**
-     * 潜行右键：只装被点的那一格，不碰结构里的其它空位。
-     * 想给特定某格换/补晶体、又不想影响整座时用这个。
-     *
-     * @return 实际塞进去的数量（0 或 1）
-     */
-    public int fillThisSlot(ItemStack stack, Player player) {
-        return fill(stack, player, true);
-    }
-
-    /**
-     * 装晶体的共同实现。调用方负责判断手里拿的是不是晶体方块
-     * （客户端只是预测，真正的消耗在服务端发生）。
-     *
-     * @param onlyThisSlot true = 只装被点的那一格，false = 补满整座结构
-     */
-    private int fill(ItemStack stack, Player player, boolean onlyThisSlot) {
+    public int applyCrystal(ItemStack stack, Player player, boolean onlyThisSlot) {
         if (stack.isEmpty() || !CrystalCapacities.isCrystal(stack)) {
             return 0;
         }
-        int installed = installCrystalInto(this, stack, player);
+        int changed = applyCrystalAt(this, stack, player);
         if (!onlyThisSlot) {
             for (CrystalBatteryBlockEntity part : resolveController().parts()) {
                 if (stack.isEmpty()) {
                     break;
                 }
                 if (part != this) {
-                    installed += installCrystalInto(part, stack, player);
+                    changed += applyCrystalAt(part, stack, player);
                 }
             }
         }
-        if (installed > 0) {
+        if (changed > 0) {
             if (level != null) {
-                level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
-                        0.7F, 1.1F);
+                // 音效放在整个循环之外：一次操作只响一声，哪怕整座都换了一遍也不会连响；
+                // 响在玩家点的那一格上（worldPosition 就是被点的那一格）。
+                // 参数照抄原版放方块时的算法（见 BlockItem#place）：音量 (1.0+1.0)/2，音高 1.0*0.8，
+                // 这样听起来与"真的把紫水晶方块放下去"完全一致。
+                level.playSound(null, worldPosition, SoundEvents.AMETHYST_BLOCK_PLACE, SoundSource.BLOCKS,
+                        1.0F, 0.8F);
             }
             notifyEnergyChanged();
         }
-        return installed;
+        return changed;
     }
 
     /**
-     * 往一格空电池里塞一颗，并从手上扣掉一颗。改到哪一格就由哪一格标脏并发包：
-     * 各格的晶体是分散存的，也只由各格自己同步给客户端（护目镜要靠它统计组成）。
+     * 手上这颗晶体还用不用得上：整座电池里有没有「装的不是它」的格子（空位也算），
+     * {@code onlyThisSlot} 时只看被点的那一格。
+     * <p>
+     * 客户端拿它预测这次右键会不会真的生效——既免得对着已经全是同种的电池空挥手，
+     * 也免得把无效交互判成成功、挡住玩家把晶体当方块放到电池旁边。
+     */
+    public boolean canApplyCrystal(ItemStack crystal, boolean onlyThisSlot) {
+        if (onlyThisSlot) {
+            return !holdsSameCrystal(this, crystal);
+        }
+        for (CrystalBatteryBlockEntity part : resolveController().parts()) {
+            if (!holdsSameCrystal(part, crystal)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 这一格装的正好就是这种晶体；空格子一律算「不是」。
+     * <p>
+     * 只比<b>物品本体</b>，不比组件：{@code ItemStack.isSameItemSameComponents} 内部比的是组件表，
+     * 而组件表的相等性在「新建」与「NBT 反序列化」两条路径上可能给不出相等（见
+     * {@code PatchedDataComponentMap#equals}），存档重载后会出现"明明是同一种晶体却判定为不同"，
+     * 于是白换一次、还让玩家以为不能把晶体放到电池旁边。晶体身份就是物品本身，比物品足够且更稳，
+     * 也与护目镜里按物品归类统计组成的口径一致。
+     */
+    private static boolean holdsSameCrystal(CrystalBatteryBlockEntity part, ItemStack crystal) {
+        return !part.crystal.isEmpty() && part.crystal.is(crystal.getItem());
+    }
+
+    /**
+     * 处理一格：空着装上一颗，装的是别的晶体就换掉（旧的还玩家），已经是同一种则不动。
+     * 改到哪一格就由哪一格标脏并发包：各格的晶体是分散存的，也只由各格自己同步给客户端
+     * （护目镜要靠它统计组成）。
      * <p>
      * 扣数量走 {@link ItemStack#consume(int, Entity)}，创造模式下不扣——与"一次放一层"
-     * 那边 {@code BlockItem.place} 的消耗口径一致，也让创造模式一次点击就能装满整座电池。
+     * 那边 {@code BlockItem.place} 的消耗口径一致，也让创造模式一次点击就能换完整座电池。
      */
-    private static int installCrystalInto(CrystalBatteryBlockEntity part, ItemStack stack, Player player) {
-        if (stack.isEmpty() || !part.crystal.isEmpty()) {
+    private static int applyCrystalAt(CrystalBatteryBlockEntity part, ItemStack stack, Player player) {
+        if (stack.isEmpty() || holdsSameCrystal(part, stack)) {
             return 0;
         }
+        ItemStack replaced = part.crystal;
         part.crystal = stack.copyWithCount(1);
         stack.consume(1, player);
+        // 换下来的旧晶体还玩家；创造模式不给（与扳手拆卸那边一样跳过掉落，免得刷一背包东西）
+        if (!replaced.isEmpty() && !player.isCreative()) {
+            player.getInventory().placeItemBackInInventory(replaced.copy());
+        }
+        // 换成容量更小的晶体时，这一格存不下的电要就地削掉
+        // （与储罐缩小容量时排掉多余流体同理，否则护目镜会显示出"存得比容量还多"）
+        int capacity = part.getBlockCapacity();
+        if (part.energy > capacity) {
+            part.energy = capacity;
+        }
         part.setChanged();
         part.sendData();
         return 1;
-    }
-
-    /** 整座电池里还空着的格子数；客户端用它预测右键能不能装上 */
-    public int getEmptySlotCount() {
-        int empty = 0;
-        for (CrystalBatteryBlockEntity part : resolveController().parts()) {
-            if (part.crystal.isEmpty()) {
-                empty++;
-            }
-        }
-        return empty;
     }
 
     /**

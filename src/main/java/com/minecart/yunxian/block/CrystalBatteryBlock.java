@@ -48,8 +48,8 @@ import javax.annotation.ParametersAreNonnullByDefault;
  * <p>
  * 四段交互各管一件事，互不冲突：
  * <ul>
- *   <li>手持晶体方块右键 → 把整座电池的空位都补上（{@link #useItemOn}）；</li>
- *   <li>手持晶体方块<b>潜行</b>右键 → 只装被点的那一格；</li>
+ *   <li>手持晶体方块右键 → 把整座电池里"装的不是手上这颗"的格子都换成手上这颗（{@link #useItemOn}）；</li>
+ *   <li>手持晶体方块<b>潜行</b>右键 → 只换被点的那一格；</li>
  *   <li>扳手右键 → 切换整座结构的有窗 / 无窗外观（{@link #onWrenched}）；</li>
  *   <li>扳手<b>潜行</b>右键 → 快速拆卸，掉空格电池 + 这一格的晶体（{@code IWrenchable} 默认实现，
  *       掉落物走 {@link #getDrops}）。</li>
@@ -106,11 +106,18 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
     }
 
     /**
-     * 手持晶体方块右键 → 给整座电池里所有还空着的格子都装上，手上有多少装多少（被点的那格优先保证）。
-     * 潜行右键则只装被点的那一格，不动结构里的其它空位。单格电池两种方式等价。
+     * 手持晶体方块右键 → 把整座电池里「装的不是手上这颗」的格子都换成手上这颗
+     * （空格子直接装上，装的是别的晶体的换掉、旧的还玩家），手上有多少颗就换多少格。
+     * 潜行右键则只处理被点的那一格，不动结构里的其它格子。单格电池两种方式等价。
      * <p>
      * 手里不是晶体方块（例如扳手）时一律放行，让扳手的拆卸 / 切窗逻辑接手；
-     * 该装的格子都装满了时同样放行，免得对着满电池空摆手臂。
+     * 整座都已经是同一种晶体时同样放行，免得空挥手臂、也免得挡住"把晶体当方块放到电池旁边"。
+     * <p>
+     * <b>潜行那一段实际很少走到这里</b>：原版潜行时会整段跳过方块的 useItemOn、
+     * 把控制权交给物品的 useOn，所以潜行换晶体由
+     * {@link com.minecart.yunxian.item.CrystalBatteryItem#useOn} 处理。这里保留潜行分支是为了
+     * 语义完整——万一有别的调用方（自动化、其它模组）绕过原版那条规则直接调到本方法，
+     * 潜行时也应当只换一格，而不是整座一起换。
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
@@ -119,20 +126,14 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         return onBlockEntityUseItemOn(level, pos, battery -> {
-            boolean sneaking = player.isShiftKeyDown();
+            boolean onlyThisSlot = player.isShiftKeyDown();
             if (level.isClientSide) {
                 // 客户端只负责摆臂；判据与服务端一致，免得预测与实际不符（空挥手 / 该挥手却不挥）
-                boolean installable = sneaking
-                        ? battery.getCrystal().isEmpty()
-                        : battery.getEmptySlotCount() > 0;
-                return installable
+                return battery.canApplyCrystal(stack, onlyThisSlot)
                         ? ItemInteractionResult.SUCCESS
                         : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
             }
-            int installed = sneaking
-                    ? battery.fillThisSlot(stack, player)
-                    : battery.fillEmptySlots(stack, player);
-            return installed > 0
+            return battery.applyCrystal(stack, player, onlyThisSlot) > 0
                     ? ItemInteractionResult.SUCCESS
                     : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         });

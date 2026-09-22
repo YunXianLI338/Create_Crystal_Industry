@@ -3,14 +3,20 @@ package com.minecart.yunxian.datagen;
 import java.util.concurrent.CompletableFuture;
 
 import com.minecart.yunxian.Yunxian;
+import com.minecart.yunxian.battery.CrystalTier;
 import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.budding.BuddingFamilies.RegisteredFamily;
 import com.minecart.yunxian.registry.ModBlocks;
 import com.minecart.yunxian.registry.ModTags;
 
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.IntrinsicHolderTagsProvider.IntrinsicTagAppender;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
@@ -19,7 +25,8 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 生成方块标签：通用母岩标签 c:budding_blocks、挖掘工具标签，以及挖掘等级标签。
+ * 生成方块标签：通用母岩标签 c:budding_blocks、挖掘工具标签、挖掘等级标签，
+ * 以及水晶电池的晶体档位标签（内容由 {@link CrystalTier} 派生）。
  * 新增母岩家族时这里不需要改动，全部由 {@link BuddingFamilies#ALL} 派生。
  */
 public class ModBlockTagsProvider extends BlockTagsProvider {
@@ -70,6 +77,38 @@ public class ModBlockTagsProvider extends BlockTagsProvider {
                     add(tier, block, optional);
                 }
             }
+        }
+
+        addBatteryCrystalTags(provider);
+    }
+
+    /**
+     * 水晶电池的晶体档位标签：内容全部来自 {@link CrystalTier#defaultBlocks()}。
+     * <p>
+     * 物品侧不在这里生成，而是由 {@link ModItemTagsProvider} 用 {@code ItemTagsProvider#copy}
+     * 把这些标签原样复制过去——标签不能跨方块/物品互相引用，只能这样避免两份列表各写一遍。
+     * {@code copy} 要求被复制的方块标签由本次生成产出，所以这些标签必须是数据生成的，
+     * 不能留在 resources 下手写（同路径会与生成结果冲突，构建直接失败）。
+     */
+    private void addBatteryCrystalTags(HolderLookup.Provider provider) {
+        HolderGetter<Block> blocks = provider.lookupOrThrow(Registries.BLOCK);
+
+        for (CrystalTier tier : CrystalTier.values()) {
+            IntrinsicTagAppender<Block> tierTag = tag(tier.tag());
+            for (ResourceLocation id : tier.defaultBlocks()) {
+                // 用 add(Block) 而不是 addOptional(id)：默认成员全是硬依赖（原版/机械动力/本模组），
+                // 写错就该当场抛异常，而不是生成一条 required:false 把错误静默吞掉。
+                tierTag.add(blocks.get(ResourceKey.create(Registries.BLOCK, id))
+                        .orElseThrow(() -> new IllegalStateException(
+                                "晶体容量档 " + tier + " 的默认方块不存在：" + id))
+                        .value());
+            }
+        }
+
+        // 汇总标签：引用四个档位标签，而不是把方块再列一遍，所以永远不会和档位表脱节
+        IntrinsicTagAppender<Block> crystal = tag(ModTags.BATTERY_CRYSTAL);
+        for (CrystalTier tier : CrystalTier.values()) {
+            crystal.addTag(tier.tag());
         }
     }
 

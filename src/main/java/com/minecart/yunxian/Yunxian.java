@@ -3,6 +3,7 @@ package com.minecart.yunxian;
 import com.minecart.yunxian.advancement.YunxianAdvancements;
 import com.minecart.yunxian.attachment.EchoAttachments;
 import com.minecart.yunxian.behaviour.SmartDrillMovementBehaviour;
+import com.minecart.yunxian.battery.CrystalBatteryInteractions;
 import com.minecart.yunxian.budding.BuddingFamilies;
 import com.minecart.yunxian.budding.BuddingGrowthEngine;
 import com.minecart.yunxian.client.ModRenderers;
@@ -43,6 +44,9 @@ public class Yunxian {
         NeoForge.EVENT_BUS.addListener(ScriptedBlockDrops::onBlockDrops);
         // 玩家亲手挖掉一颗完整晶簇 → 「它真的会长」（按方块判，见 YunxianAdvancements.isCluster）
         NeoForge.EVENT_BUS.addListener(YunxianAdvancements::onBlockBroken);
+        // 潜行右键换晶体：只能挂在物品层（原版潜行时会跳过方块的 useItemOn），且手持的是任意晶体方块，
+        // 所以走 UseItemOnBlockEvent 这个对任何物品都生效的钩子，见该类注释
+        NeoForge.EVENT_BUS.addListener(CrystalBatteryInteractions::onUseItemOnBlock);
         modEventBus.addListener(Yunxian::commonSetup);
         ModRenderers.register(modEventBus);
         ModFeatures.register(modEventBus);

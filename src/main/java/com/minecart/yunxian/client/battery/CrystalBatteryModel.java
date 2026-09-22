@@ -6,12 +6,14 @@ import java.util.Collections;
 import java.util.List;
 
 import com.minecart.yunxian.registry.ModBlocks;
-import com.simibubi.create.AllSpriteShifts;
 import com.simibubi.create.CreateClient;
+import com.minecart.yunxian.Yunxian;
 import com.simibubi.create.api.connectivity.ConnectivityHandler;
 import com.simibubi.create.content.fluids.tank.FluidTankCTBehaviour;
 import com.simibubi.create.foundation.block.connected.CTModel;
+import com.simibubi.create.foundation.block.connected.AllCTTypes;
 import com.simibubi.create.foundation.block.connected.CTSpriteShiftEntry;
+import com.simibubi.create.foundation.block.connected.CTSpriteShifter;
 
 import net.createmod.catnip.data.Iterate;
 import net.minecraft.client.renderer.RenderType;
@@ -19,6 +21,7 @@ import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,13 +33,22 @@ import net.neoforged.neoforge.client.model.data.ModelProperty;
  * 水晶电池的模型：逐条照搬储罐的 {@code FluidTankModel}——相邻同结构方块用连接材质，
  * 并剔除朝内那一面的四边形。
  * <p>
- * <b>材质目前直接借用 Create 的 fluid_tank 系列</b>（{@link com.simibubi.create.AllSpriteShifts}），
- * 与 resources 下模型文件里写的贴图路径保持一致。之后画好自己的材质时，
- * 要改两处：模型文件里的贴图路径，以及这里换成一整套自家的 {@link CTSpriteShiftEntry}。
+ * 材质全部来自本模组自己的 {@code textures/block/crystal_battery/}，与 resources 下模型文件里写的
+ * 贴图路径一一对应。改材质时只要保持「&lt;名字&gt; 与 &lt;名字&gt;_connected」这个配对命名，
+ * 代码一行都不用动；如果连文件名也要改，改下面三个 ctShift(...) 的入参即可。
+ * <p>
+ * 连接材质必须走自己的一套 {@link CTSpriteShiftEntry}：CT 的贴图重映射只在
+ * 「面当前用的贴图 == shift 的 original」时才会发生（见 {@code CTModel#getQuads}），
+ * 换了贴图路径却沿用 Create 的 shift，连接效果会静默失效、退回一张平贴图。
  */
 public class CrystalBatteryModel extends CTModel {
 
     protected static final ModelProperty<CullData> CULL_PROPERTY = new ModelProperty<>();
+
+    /** 侧面/顶面/内面三张贴图对；CT 类型与储罐一致（RECTANGLE，4x4 图集），所以贴图布局可以照抄 */
+    private static final CTSpriteShiftEntry SIDE_SHIFT = ctShift("crystal_battery");
+    private static final CTSpriteShiftEntry TOP_SHIFT = ctShift("crystal_battery_top");
+    private static final CTSpriteShiftEntry INNER_SHIFT = ctShift("crystal_battery_inner");
 
     /** 在客户端初始化时挂到 Create 的模型替换器上，让本方块用这个模型而不是普通烘培模型 */
     public static void register() {
@@ -44,14 +56,15 @@ public class CrystalBatteryModel extends CTModel {
                 .register(ModBlocks.CRYSTAL_BATTERY.getId(), CrystalBatteryModel::new);
     }
 
-    private CrystalBatteryModel(BakedModel originalModel) {
-        this(originalModel, AllSpriteShifts.FLUID_TANK, AllSpriteShifts.FLUID_TANK_TOP,
-                AllSpriteShifts.FLUID_TANK_INNER);
+    private static CTSpriteShiftEntry ctShift(String name) {
+        String dir = "block/crystal_battery/";
+        return CTSpriteShifter.getCT(AllCTTypes.RECTANGLE,
+                ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, dir + name),
+                ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, dir + name + "_connected"));
     }
 
-    private CrystalBatteryModel(BakedModel originalModel, CTSpriteShiftEntry side, CTSpriteShiftEntry top,
-                                CTSpriteShiftEntry inner) {
-        super(originalModel, new FluidTankCTBehaviour(side, top, inner));
+    private CrystalBatteryModel(BakedModel originalModel) {
+        super(originalModel, new FluidTankCTBehaviour(SIDE_SHIFT, TOP_SHIFT, INNER_SHIFT));
     }
 
     @Override

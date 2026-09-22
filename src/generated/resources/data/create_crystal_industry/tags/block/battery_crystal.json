@@ -1,0 +1,8 @@
+{
+  "values": [
+    "#create_crystal_industry:battery_crystal/low_capacity",
+    "#create_crystal_industry:battery_crystal/medium_capacity",
+    "#create_crystal_industry:battery_crystal/high_capacity",
+    "#create_crystal_industry:battery_crystal/extreme_capacity"
+  ]
+}

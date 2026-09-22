@@ -2,9 +2,9 @@
     "parent": "create:block/fluid_tank/block_bottom",
     "render_type": "minecraft:cutout_mipped",
     "textures": {
-        "0": "create:block/fluid_tank_top",
-        "1": "create:block/fluid_tank",
-        "4": "create:block/fluid_tank_inner",
-        "particle": "create:block/fluid_tank"
+        "0": "create_crystal_industry:block/crystal_battery/crystal_battery_top",
+        "1": "create_crystal_industry:block/crystal_battery/crystal_battery",
+        "4": "create_crystal_industry:block/crystal_battery/crystal_battery_inner",
+        "particle": "create_crystal_industry:block/crystal_battery/crystal_battery"
     }
 }

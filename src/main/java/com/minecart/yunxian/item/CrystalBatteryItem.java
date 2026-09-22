@@ -20,7 +20,12 @@ import net.minecraft.world.level.block.state.BlockState;
  * 水晶电池的方块物品：在已有的 2x2 / 3x3 电池上再放一层时，自动把整层补齐，
  * 与机械动力的流体储罐（{@code FluidTankItem#tryMultiPlace}）完全同一套做法。
  * <p>
- * 触发条件很窄，不满足就退化成普通单块放置：
+ * <b>潜行右键换晶体不在这里</b>：那个交互手里拿的是任意晶体方块（不一定是本物品），
+ * 而且原版潜行时会跳过方块的 useItemOn、把控制权交给手持物品——所以它走的是
+ * {@link com.minecart.yunxian.battery.CrystalBatteryInteractions} 里的
+ * {@code UseItemOnBlockEvent} 钩子，与手持物品是什么无关。
+ * <p>
+ * 整层放置的触发条件很窄，不满足就退化成普通单块放置：
  * <ul>
  *   <li>玩家没在潜行，且手上不是对称手杖（手杖会镜像放方块，两边同时铺会打架）；</li>
  *   <li>贴在已有电池的<b>顶面或底面</b>朝上/下放（侧面贴不算，"层"是水平的）；</li>

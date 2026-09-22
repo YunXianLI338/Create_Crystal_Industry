@@ -46,8 +46,41 @@ public final class ModTags {
 
     public static final TagKey<Block> BATTERY_CRYSTAL_EXTREME = batteryCrystal("extreme_capacity");
 
+    /**
+     * 上面四个档位标签的物品版，内容由数据生成从方块标签<b>原样复制</b>过来（{@code ItemTagsProvider#copy}），
+     * 所以两个列表不会各写一份、也不会脱节。写配方、写 KubeJS 过滤时用物品标签，方块侧的判定仍看方块标签。
+     */
+    public static final TagKey<Item> BATTERY_CRYSTAL_LOW_ITEM = batteryCrystalItem("low_capacity");
+
+    public static final TagKey<Item> BATTERY_CRYSTAL_MEDIUM_ITEM = batteryCrystalItem("medium_capacity");
+
+    public static final TagKey<Item> BATTERY_CRYSTAL_HIGH_ITEM = batteryCrystalItem("high_capacity");
+
+    public static final TagKey<Item> BATTERY_CRYSTAL_EXTREME_ITEM = batteryCrystalItem("extreme_capacity");
+
+    /**
+     * 全部「能当晶体用」的方块汇总标签 = 上面四个档位标签的并集，供整合包 / 脚本按类别筛选
+     * （配方批量替换、JEI 过滤、KubeJS 里 {@code tagItem(...)} 之类）。
+     * <p>
+     * <b>它只是汇总，不是判据</b>：判定某个方块能不能当晶体、算哪一档，看的一律是上面那四个档位标签，
+     * 本标签只是把四个并起来方便引用。所以往里面加方块没用——要加晶体，请加到某个<b>档位</b>标签里，
+     * 这个汇总标签会自动跟着变。数据包路径为
+     * {@code data/create_crystal_industry/tags/block/battery_crystal.json}。
+     */
+    public static final TagKey<Block> BATTERY_CRYSTAL = TagKey.create(Registries.BLOCK,
+            ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "battery_crystal"));
+
+    /** 上面那个汇总标签的物品版，同样由数据生成复制过来 */
+    public static final TagKey<Item> BATTERY_CRYSTAL_ITEM = TagKey.create(Registries.ITEM,
+            ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "battery_crystal"));
+
     private static TagKey<Block> batteryCrystal(String tier) {
         return TagKey.create(Registries.BLOCK,
+                ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "battery_crystal/" + tier));
+    }
+
+    private static TagKey<Item> batteryCrystalItem(String tier) {
+        return TagKey.create(Registries.ITEM,
                 ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "battery_crystal/" + tier));
     }
 

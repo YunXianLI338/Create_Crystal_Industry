@@ -2,8 +2,8 @@
     "parent": "create:block/fluid_tank/block_middle_window_ne",
     "render_type": "minecraft:cutout_mipped",
     "textures": {
-        "1": "create:block/fluid_tank",
-        "3": "create:block/fluid_tank_window",
-        "particle": "create:block/fluid_tank"
+        "1": "create_crystal_industry:block/crystal_battery/crystal_battery",
+        "3": "create_crystal_industry:block/crystal_battery/crystal_battery_window",
+        "particle": "create_crystal_industry:block/crystal_battery/crystal_battery"
     }
 }
