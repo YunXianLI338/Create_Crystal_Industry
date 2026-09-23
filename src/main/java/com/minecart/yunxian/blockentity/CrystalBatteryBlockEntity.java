@@ -13,6 +13,7 @@ import com.minecart.yunxian.config.ModConfig;
 import com.minecart.yunxian.registry.ModBlockEntities;
 import com.simibubi.create.api.connectivity.ConnectivityHandler;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.content.schematics.requirement.ItemRequirement;
 import com.simibubi.create.foundation.blockEntity.IMultiBlockEntityContainer;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -681,9 +682,12 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
         controller = tag.contains("Controller") ? NBTHelper.readBlockPos(tag, "Controller") : null;
 
         if (isController()) {
-            window = tag.getBoolean("Window");
-            width = tag.getInt("Size");
-            height = tag.getInt("Height");
+            // 只有控制器会带这几个字段（见 write / writeSafe）。缺失时要按"单格 + 有窗"兜底：
+            // getInt 缺省是 0，直接拿来当尺寸会让这一格变成 0×0 的坏状态；蓝图/其它模组传过来的
+            // 是 PartialSafeNBT 式的部分数据，必须容得下缺字段。
+            window = !tag.contains("Window") || tag.getBoolean("Window");
+            width = tag.contains("Size") ? tag.getInt("Size") : 1;
+            height = tag.contains("Height") ? tag.getInt("Height") : 1;
         }
 
         crystal = ItemStack.parseOptional(registries, tag.getCompound("Crystal"));
@@ -708,6 +712,53 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
             }
             invalidateRenderBoundingBox();
         }
+    }
+
+    // ==================== 蓝图（schematic）支持 ====================
+
+    /**
+     * 蓝图保存：把这一格塞的晶体带上，控制器再带上结构尺寸。
+     * <p>
+     * Create 保存方块实体数据时会走 {@code PartialSafeNBT}（{@code SmartBlockEntity} 本来就实现），
+     * 但父类的 {@code writeSafe} 只写方块实体的基础字段，所以这里必须自己补。键名沿用存档用的
+     * {@code "Crystal"}：蓝图放下去时走的是同一个 {@link #read}，天然对得上。
+     * <p>
+     * <b>只带晶体，不带电量</b>：电量不是物品，蓝图打印时没法按量消耗，带上反而会凭空发电。
+     * 结构尺寸这一段与储罐的 {@code writeSafe} 一致，让控制器格在蓝图里就记着自己的大小，
+     * 放下去直接成形、不必依赖各方块放置顺序触发的那轮重连。
+     */
+    @Override
+    public void writeSafe(CompoundTag tag, HolderLookup.Provider registries) {
+        super.writeSafe(tag, registries);
+        if (isController()) {
+            tag.putBoolean("Window", window);
+            tag.putInt("Size", width);
+            tag.putInt("Height", height);
+        }
+        if (!crystal.isEmpty()) {
+            tag.put("Crystal", crystal.saveOptional(registries));
+        }
+    }
+
+    /**
+     * 蓝图打印时这一格额外要消耗的物品：方块本体由 {@code ItemRequirement.of} 自己算上，
+     * 这里只补「这一格里塞着的那颗晶体」。
+     * <p>
+     * 蓝图炮正是按 {@code ItemRequirement.of(state, be)} 的第五条分支取这个需求的
+     * （BE 实现 {@code SpecialBlockEntityItemRequirement}），所以带晶体的电池在蓝图里会要求
+     * 「空电池 + 对应晶体」各一份；空格电池则只要空电池。
+     */
+    @Override
+    public ItemRequirement getRequiredItems(BlockState state) {
+        ItemRequirement requirement = super.getRequiredItems(state);
+        if (!crystal.isEmpty()) {
+            // CONSUME = 打印时被消耗掉；传副本，别把这一格自己的那枚栈交出去。
+            // 用 StackRequirement（只比物品）而不是 StrictNbtStackRequirement（连组件一起比）：
+            // 晶体身份就是物品本身，玩家拿一把改过名的同类晶体也应当能满足需求。
+            requirement = requirement.union(new ItemRequirement(
+                    new ItemRequirement.StackRequirement(crystal.copy(), ItemRequirement.ItemUseType.CONSUME)));
+        }
+        return requirement;
     }
 
     // ==================== 护目镜 ====================
