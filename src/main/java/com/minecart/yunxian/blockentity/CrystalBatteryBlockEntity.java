@@ -69,6 +69,10 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
     /** 客户端同步节流：每 8 tick 最多发一次（与储罐一致） */
     private static final int SYNC_RATE = 8;
 
+    /** 电量 0% 时的发光亮度；100% 时为 {@link #LIGHT_AT_FULL}，中间线性插值 */
+    private static final int LIGHT_AT_EMPTY = 3;
+    private static final int LIGHT_AT_FULL = 12;
+
     private final IEnergyStorage energyHandler;
 
     private BlockPos controller;
@@ -82,6 +86,13 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
     private ItemStack crystal = ItemStack.EMPTY;
     /** 本格储存的电量（FE）；整座电池的总电量 = 各格之和 */
     private int energy;
+
+    /**
+     * 交给光照引擎的亮度：满足「开窗 + 本格塞了晶体」时按整座电量百分比映射到
+     * {@link #LIGHT_AT_EMPTY}~{@link #LIGHT_AT_FULL}，其余情况一律 0。
+     * 光照引擎是<b>按格</b>查询的，所以控制器算好后要写到结构里每一格上（同储罐）。
+     */
+    private int luminosity;
 
     // 仅客户端：控制器同步过来的整座汇总值，供护目镜显示（详见 write / read）
     private int syncedEnergy;
@@ -375,7 +386,57 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
 
     /** 电量或容量变了：由控制器把整座汇总值发给客户端（护目镜显示的是汇总值，不是单格） */
     private void notifyEnergyChanged() {
-        resolveController().sendData();
+        CrystalBatteryBlockEntity controller = resolveController();
+        controller.sendData();
+        // 电量变了，发光也可能跟着跨过一档
+        controller.updateLuminosity();
+    }
+
+    // ==================== 发光 ====================
+
+    /** 本格当前的发光亮度（0 = 不发光），方块侧 {@code getLightEmission} 读它 */
+    public int getLuminosity() {
+        return luminosity;
+    }
+
+    /** 整座结构是否处于"开窗"状态（扳手右键切换）。窗口状态记在控制器上 */
+    public boolean isWindow() {
+        return window;
+    }
+
+    /**
+     * 按电量百分比刷新整座电池的发光：开窗时 0% → {@link #LIGHT_AT_EMPTY}、100% → {@link #LIGHT_AT_FULL}，
+     * 关窗时整座 0（不发光）。
+     * <p>
+     * 亮度按<b>整座结构</b>的电量百分比算，但<b>逐格</b>决定亮不亮：没塞晶体的格子一律 0。
+     * 容量为 0 的格子本来就存不了电，让它跟着亮没有意义；反过来这也成了一个直观的指示——
+     * 一眼就能看出这座电池里哪些格子还没装晶体。
+     * <p>
+     * 只有真正跨档的那几格才通知光照引擎。电量是连续变化的，但这个映射是整数档，
+     * 一整轮充放也就变十来次，所以代价可以忽略；反过来若每次电量变动都去 checkBlock，
+     * 一座几百格的电池在充电时会每 tick 把光照引擎刷爆。
+     */
+    private void updateLuminosity() {
+        if (level == null || level.isClientSide || !isController()) {
+            return;
+        }
+        int structureLight = window
+                ? LIGHT_AT_EMPTY + Math.round(getChargeFraction() * (LIGHT_AT_FULL - LIGHT_AT_EMPTY))
+                : 0;
+        for (CrystalBatteryBlockEntity part : parts()) {
+            part.setLuminosity(part.crystal.isEmpty() ? 0 : structureLight);
+        }
+    }
+
+    private void setLuminosity(int value) {
+        if (luminosity == value || level == null) {
+            return;
+        }
+        luminosity = value;
+        // 亮度不是方块状态，光照引擎不会自己发现，必须手动让它重算这一格
+        level.getChunkSource().getLightEngine().checkBlock(worldPosition);
+        setChanged();
+        sendData();
     }
 
     // ==================== 多方块骨架（与 FluidTankBlockEntity 同构） ====================
@@ -390,6 +451,8 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
             return;
         }
         ConnectivityHandler.formMulti(this);
+        // 结构刚变过：并进来的格子要拿到当前亮度，拆出去的格子要按自己那点电量重新算（多半是熄灭）
+        updateLuminosity();
     }
 
     @Override
@@ -506,6 +569,8 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
         }
         if (isController()) {
             setWindows(window);
+            // 结构变了，整座的电量百分比也变了，各格亮度按新结构重算
+            updateLuminosity();
             sendData();
         }
         setChanged();
@@ -559,6 +624,8 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
                 }
             }
         }
+        // 开/关窗本身就会改变发光（关窗一律不亮）
+        updateLuminosity();
     }
 
     @Override
@@ -665,6 +732,8 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
         } else {
             tag.putInt("Energy", energy);
         }
+        // 亮度是每格自己的（光照引擎按格查），所以要跟着每一格一起同步
+        tag.putInt("Luminosity", luminosity);
 
         super.write(tag, registries, clientPacket);
     }
@@ -696,6 +765,14 @@ public class CrystalBatteryBlockEntity extends SmartBlockEntity
             syncedCapacity = tag.getInt("Capacity");
         } else {
             energy = tag.getInt("Energy");
+        }
+
+        // 亮度：客户端读到新值时要让本地光照引擎重算这一格。亮度不是方块状态，
+        // 方块实体的同步包本身不会触发光照更新（与储罐 read 里的处理一致）。
+        int prevLuminosity = luminosity;
+        luminosity = tag.getInt("Luminosity");
+        if (clientPacket && luminosity != prevLuminosity && hasLevel()) {
+            level.getChunkSource().getLightEngine().checkBlock(worldPosition);
         }
 
         // 客户端拿到包才能知道结构有没有变大变小，缓存过的渲染包围盒要在这一步失效。

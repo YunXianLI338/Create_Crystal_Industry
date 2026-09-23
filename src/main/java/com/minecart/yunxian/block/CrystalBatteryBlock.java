@@ -24,6 +24,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -54,6 +55,8 @@ import javax.annotation.ParametersAreNonnullByDefault;
  *   <li>扳手<b>潜行</b>右键 → 快速拆卸，掉空格电池 + 这一格的晶体（{@code IWrenchable} 默认实现，
  *       掉落物走 {@link #getDrops}）。</li>
  * </ul>
+ * 另外，<b>开窗且本格塞了晶体</b>时按整座电量百分比发光（0% → 3、100% → 12）：
+ * 关窗、或该格还没装晶体时都不亮——见 {@link #getLightEmission}。
  */
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
@@ -193,6 +196,23 @@ public class CrystalBatteryBlock extends Block implements IWrenchable, IBE<Cryst
     @Override
     public BlockEntityType<? extends CrystalBatteryBlockEntity> getBlockEntityType() {
         return ModBlockEntities.CRYSTAL_BATTERY.get();
+    }
+
+    /**
+     * 发光：读所在电池当前同步过来的亮度，但<b>只有开窗状态才亮</b>——关窗时整座熄灭。
+     * 与储罐的 {@code getLightEmission} 同构：窗口状态记在控制器上，所以判定也要问控制器。
+     */
+    @Override
+    public int getLightEmission(BlockState state, BlockGetter level, BlockPos pos) {
+        CrystalBatteryBlockEntity battery = ConnectivityHandler.partAt(getBlockEntityType(), level, pos);
+        if (battery == null || !battery.hasLevel()) {
+            return 0;
+        }
+        CrystalBatteryBlockEntity controller = battery.getControllerBE();
+        if (controller == null || !controller.isWindow()) {
+            return 0;
+        }
+        return battery.getLuminosity();
     }
 
     /** 整层放置时每块都要响一声会很吵，用一套音量很小的金属音盖掉（与储罐的 SILENCED_METAL 一致） */
