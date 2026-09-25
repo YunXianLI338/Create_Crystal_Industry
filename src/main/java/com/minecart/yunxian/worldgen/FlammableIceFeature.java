@@ -9,8 +9,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BubbleColumnBlock;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
@@ -121,11 +123,15 @@ public class FlammableIceFeature extends Feature<NoneFeatureConfiguration> {
             }
 
             // 气泡柱从坑底冒到海面
+            // 注意：BUBBLE_COLUMN 的默认状态 DRAG_DOWN = true，是岩浆块那种下降气泡柱；
+            // 必须显式置 false 才是灵魂沙的上升气泡柱（否则只能等邻居更新触发的 5 tick 纠正）
+            BlockState upwardColumn = Blocks.BUBBLE_COLUMN.defaultBlockState()
+                    .setValue(BubbleColumnBlock.DRAG_DOWN, false);
             BlockPos.MutableBlockPos bub = new BlockPos(x, y - sink + 1, z).mutable();
             while (bub.getY() < seaLevel
                     && (level.getBlockState(bub).is(Blocks.WATER)
                     || level.getBlockState(bub).is(Blocks.BUBBLE_COLUMN))) {
-                level.setBlock(bub, Blocks.BUBBLE_COLUMN.defaultBlockState(), 2);
+                level.setBlock(bub, upwardColumn, 2);
                 bub.move(Direction.UP);
             }
             placed++;
