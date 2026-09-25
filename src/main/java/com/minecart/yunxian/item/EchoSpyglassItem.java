@@ -26,9 +26,11 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
+import java.util.Set;
 
 public class EchoSpyglassItem extends Item {
 
@@ -94,7 +96,7 @@ public class EchoSpyglassItem extends Item {
     @Override
     public void releaseUsing(ItemStack stack, Level level, LivingEntity entity, int timeLeft) {
         if (!level.isClientSide && entity instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, EchoRevealPayload.clear(level));
+            clearReveals(serverPlayer, level);
         }
         entity.playSound(SoundEvents.SPYGLASS_STOP_USING, 1.0F, 1.0F);
     }
@@ -102,7 +104,7 @@ public class EchoSpyglassItem extends Item {
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
         if (!level.isClientSide && entity instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, EchoRevealPayload.clear(level));
+            clearReveals(serverPlayer, level);
         }
         return stack;
     }
@@ -127,12 +129,31 @@ public class EchoSpyglassItem extends Item {
             ItemStack filter = getFilterStack(heldStack);
             List<BlockPos> found = EchoScanner.findOres(serverLevel, player.blockPosition(),
                     ModConfig.Common.SCAN_RADIUS.get(), filter);
-            PacketDistributor.sendToPlayer(player, new EchoRevealPayload(serverLevel.dimension(), found));
             if (!found.isEmpty()) {
                 // 真的透过障碍看见了东西——扫描一直没命中就不该发（空 filter 下扫到空气不算数）
                 YunxianAdvancements.award(player, YunxianAdvancements.GEAR_REVEAL);
             }
+
+            // 结果和客户端手上那份一样就不发包：站着不动时每 10 tick 重发一遍，
+            // 客户端就会白白重建一次轮廓合并，那才是真开销
+            AttachmentType<EchoAttachments.RevealCache> cacheType = EchoAttachments.REVEAL_CACHE.get();
+            if (player.getData(cacheType).matches(serverLevel.dimension(), found)) {
+                return;
+            }
+            player.setData(cacheType,
+                    new EchoAttachments.RevealCache(serverLevel.dimension(), Set.copyOf(found)));
+            PacketDistributor.sendToPlayer(player, new EchoRevealPayload(serverLevel.dimension(), found));
         }
+    }
+
+    /**
+     * 清空客户端高亮，同时丢掉服务端的「已发送」记录。
+     * 这两步必须成对：只清客户端不清记录的话，下次举起时扫描结果与记录相同就会被跳过，
+     * 客户端反而什么都看不到。
+     */
+    private static void clearReveals(ServerPlayer player, Level level) {
+        player.setData(EchoAttachments.REVEAL_CACHE.get(), EchoAttachments.RevealCache.EMPTY);
+        PacketDistributor.sendToPlayer(player, EchoRevealPayload.clear(level));
     }
 
     private static void openFilterMenu(ServerPlayer player, InteractionHand hand) {
