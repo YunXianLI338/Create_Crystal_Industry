@@ -4,103 +4,155 @@
 
 **English | [简体中文](README.md)**
 
-Vanilla's amethyst geode, extended to an entire industrial system.
-
-Stop strip-mining. Find a budding block, and let it grow.
+Vanilla's amethyst budding mechanic, generalized to the rest of the ore table. A budding block grows buds and clusters from its six faces, is never consumed, and keeps growing after each harvest. Ore budding blocks also convert the stone around them into the matching ore, so a single budding block amounts to a vein that expands on its own.
 
 ---
 
 ## 1. Budding Blocks
 
-Every budding block grows **Small Bud → Medium Bud → Large Bud → Cluster** from all six faces, exactly like Budding Amethyst (a 1-in-5 chance per random tick — same speed as vanilla). The budding block itself is never consumed; harvest the cluster and it starts over.
+A budding block rolls for growth independently on each of its six faces. An empty face grows a **Small Bud**; an existing bud advances along **Small Bud → Medium Bud → Large Bud → Cluster**, with the cluster as the final stage. Rolls are driven by random ticks, and a successful roll advances one stage. The budding block itself is not consumed, so the face it occupies stays available after you harvest the cluster.
 
-Growth speed comes in four tiers — **Very Slow (1/50), Slow (1/20), Normal (1/5), Fast (1/1)** — all defaulting to Normal. Which budding block sits in which tier is assigned by id in the config file, so you can make just a few of them faster or slower.
+### Budding Blocks at a Glance
 
-| Budding Block | Extra Growth Condition |
+"Adjacent Conversion" works as follows: each random tick the budding block rolls a 1-in-20 chance; on success it picks **one random position within a radius of 1 (a 3×3×3 volume)** and converts it to the matching ore if that position holds Stone or Deepslate. Output therefore depends on how much of that volume is Stone or Deepslate — burying the budding block in stone raises the hit rate. Budding Echo uses a different radius and chance, noted in the table.
+
+| Budding Block | Extra Growth Condition | Cluster Output | Adjacent Conversion |
+| --- | --- | --- | --- |
+| Rose Quartz | — | Create's Rose Quartz | — |
+| Raw Iron | — | Raw Iron | Iron Ore / Deepslate Iron Ore |
+| Raw Gold | — | Raw Gold | Gold Ore / Deepslate Gold Ore |
+| Raw Copper | — | Raw Copper | Copper Ore / Deepslate Copper Ore |
+| Raw Zinc | — | Create's Raw Zinc | Zinc Ore / Deepslate Zinc Ore |
+| Diamond | — | Diamond | Diamond Ore / Deepslate Diamond Ore |
+| Emerald | — | Emerald | Emerald Ore / Deepslate Emerald Ore |
+| Lapis Lazuli | — | Lapis Lazuli ×4–9 | Lapis Lazuli Ore / Deepslate Lapis Lazuli Ore |
+| Redstone | — | Redstone | Redstone Ore / Deepslate Redstone Ore |
+| Quartz | Full speed only in the Nether; elsewhere a successful roll has a further 1-in-2 chance to fail | Nether Quartz | Netherrack → Nether Quartz Ore |
+| Glowstone | Full speed only in the Nether, as above | Glowstone Dust | — |
+| Echo | Growth space must be at light level 0 | Echo Shard | Any of 12 blocks within a radius of 2 (dirt, sand, stone, tuff, …) → Sculk, 1-in-4 |
+| Flammable Ice | Target space must be a water source block | Flammable Ice | — |
+| Fluix *(requires AE2)* | Must be on a powered, active ME Grid (uses 1 channel); each growth consumes 200 AE | Fluix Crystal | — |
+
+Drop rules:
+
+| Block | Normal Break | Silk Touch |
+| --- | --- | --- |
+| Cluster | The item in the "Cluster Output" column above, with Fortune applied | The cluster block itself |
+| Bud | Nothing | The bud block itself |
+| Budding Block | The block one tier below it (Budding Raw Iron drops a Block of Raw Iron, Budding Diamond drops a Block of Diamond) | The same; Silk Touch does not change this |
+
+The budding block itself cannot be collected with ordinary tools. The Smart Drill's Silk Touch mode is the only way to obtain it, described in section 3.
+
+Three block properties are worth noting. Budding Redstone, its buds and its cluster all emit a redstone signal (15 from the budding block, then 3 / 7 / 11 from the buds and 15 from the cluster), so they work directly as a redstone source. Budding Glowstone, its buds and its cluster all emit light (15 from the budding block, then 3 / 7 / 11 from the buds and 15 from the cluster). Budding Echo's buds and cluster deliberately emit no light at all: any emission would occupy the very growth space they need.
+
+### Budding Block Reproduction
+
+Beyond converting ore, an ore budding block has a **1-in-25000** chance to "infect" an adjacent block of the matching ore block, turning it into another budding block. Budding Quartz infects Smooth Quartz Blocks instead, and Budding Fluix infects Fluix Blocks (that conversion additionally requires ME Grid power).
+
+| Budding Block | Block That Can Be Converted Into It |
 | --- | --- |
-| Raw Iron, Raw Gold, Raw Copper, Raw Zinc, Diamond, Emerald, Lapis Lazuli, Redstone | — |
-| Rose Quartz | — |
-| Quartz, Glowstone | Full speed only in the Nether: elsewhere every successful roll has a further 1-in-2 chance to fail |
-| Flammable Ice | Buds must be submerged in water; growth stops the moment they leave it |
-| Echo | Growth space must be at light level 0 |
-| Fluix *(requires AE2)* | Must be on a powered, active ME Grid; each growth consumes AE |
+| Raw Iron / Raw Gold / Raw Copper / Raw Zinc | The matching block of raw ore |
+| Diamond / Emerald / Lapis Lazuli | The matching block of the ore |
+| Redstone | Block of Redstone |
+| Quartz | Smooth Quartz Block |
+| Fluix | Fluix Block (requires power) |
 
-> Budding Redstone emits a redstone signal of 15 — it works directly as a redstone source.
+### Growth Speed
 
-### Budding Blocks Are Renewable
+| Tier | Chance to Advance per Random Tick | Config Key |
+| --- | --- | --- |
+| Very Slow | 1/50 | `growthSpeedVerySlow` |
+| Slow | 1/20 | `growthSpeedSlow` |
+| Normal *(default)* | 1/5, the same as vanilla Budding Amethyst | `growthSpeedNormal` |
+| Fast | 1/1, a successful roll always advances | `growthSpeedFast` |
 
-This is the important part: an ore budding block has a **1-in-20** chance per random tick to convert stone/deepslate within a 3×3×3 area into the **matching ore**. At a much lower chance, it can also "infect" the matching raw ore block, turning it into another budding block of the same kind. Budding Quartz erodes netherrack instead (into Nether Quartz Ore); Budding Echo converts dirt, stone, tuff and more into Sculk.
-
-**One budding block is a self-expanding ore vein.**
-
----
-
-## 2. Accelerators: From Minutes to Moments
-
-A vanilla budding block only receives a random tick once every ~68 seconds on average, which makes natural growth almost negligible. An Accelerator forces **one random tick onto each of its six neighbouring blocks, every single tick**.
-
-- **Electric Accelerator** — runs on FE; adjacent Accelerators balance power between themselves automatically
-- **Mechanical Accelerator** — takes Rotational Force at its back; the faster the input, the faster it works, up to 256 RPM (at full speed it matches the electric one)
-
-Both accelerators' **acceleration interval** is configurable (`Acceleration Interval (ticks)`, default 1 = every tick; larger = slower). The electric one pays FE per pass, so slowing it down also saves power. The Goggles multiplier follows the config.
-
-**Vanilla Budding Amethyst gets the same line**: point the Goggles at one inside a natural geode and it shows the growth speed too. The vanilla block itself is untouched and the info is synthesized client-side, so nothing extra is written into your saves — and it works on other people's servers as well.
-
-> ⚠️ Random ticks drive **far more than crystals**: crops, saplings, copper oxidation, nether wart — anything random-tick based gets accelerated too. **It is a general-purpose accelerator**, and crystals are simply the most profitable thing to point it at.
+Each of the four config keys takes a list of **budding family ids** — the `<id>` of the `generate_<id>` switches, such as `raw_iron`, `diamond` or `echo`. `growthSpeedNormal` lists every budding block by default; a budding block named in no list is treated as Normal, so emptying that list changes nothing. If a budding block appears in two of the non-Normal tiers, the slower tier wins and a warning is logged.
 
 ---
 
-## 3. Machines & Equipment
+## 2. Accelerators
 
-- **Smart Drill** — two modes. Normal Harvesting mines **twice as fast** as a regular Mechanical Drill; Silk Touch Harvesting mines at normal speed but **collects the budding block itself** — one of the legitimate ways to obtain budding blocks
-- **Mechanical Cleaner** — does everything an Encased Fan's airstream can do, and collects items caught in its stream into its own inventory. Place a container directly in front and it **moves items in and out of it directly, without ever dropping anything into the world**. Blowing/sucking, filters and a range of up to 20 blocks are all configurable
-- **Night Vision Goggles** — Create Goggles plus Echo Shards; toggle night vision with a keybind. Curios head slot supported
-- **Echo Spyglass** — while in use, see through obstacles with blocks rendered as outlines; accepts a filter item and detects ores by default
-- **Flammable Ice** — excellent fuel, and a favourite snack of Blazes
+A vanilla budding block sees a random tick about once every 68 seconds on average, which makes natural growth effectively unobservable. An accelerator applies **one random tick to each of its six adjacent faces**, compressing that process into seconds.
+
+| | Accelerator | Mechanical Accelerator |
+| --- | --- | --- |
+| Power source | FE | Rotational force on the back face |
+| Cost per pass | 100 FE | No energy |
+| Trigger rate | Once every `acceleratorIntervalTicks` ticks (default 1, i.e. every tick) | Same |
+| Strength | Fixed; every pass applies | Scales linearly with RPM, capped at 256 RPM |
+| Effect at full speed | 6 random ticks per tick | Identical to the Accelerator |
+| Internal buffer | 10,000 FE, max input 100 FE/t | — |
+
+- Adjacent Accelerators balance energy among themselves: the fuller side pushes toward the emptier one, and a single push never exceeds half the difference, which keeps the two from oscillating back and forth.
+- A Mechanical Accelerator below 256 RPM scales its effect with RPM; above 256 RPM it gains nothing further.
+- The `acceleratorIntervalTicks` config key (**Acceleration Interval (ticks)**) applies to both types, and a larger value means slower growth. The Accelerator settles its FE cost per pass, so slowing it down also reduces its power draw. The multiplier shown by Engineer's Goggles follows this config value.
+
+> **Random ticks drive far more than clusters.** Crops, saplings, copper oxidation, nether wart and every other random-tick-driven mechanic are accelerated along with them, which makes an accelerator a general-purpose tick accelerator as well.
+
+Wearing Engineer's Goggles and looking at a **vanilla Budding Amethyst** shows the same growth speed and multiplier line. The vanilla block itself is untouched: the information is generated client-side on demand, so nothing is added to your save data.
+
+---
+
+## 3. Machines and Equipment
+
+| Item | Description |
+| --- | --- |
+| **Smart Drill** | A mechanical drill with two modes, switchable at any time from the value slot on its side. **Normal mode**: breaks blocks at twice the speed of an ordinary Mechanical Drill. **Silk Touch mode**: same speed as an ordinary drill, but blocks drop intact as if mined with Silk Touch. Budding blocks are the special case: Normal mode only shatters them (dropping the tier below), and only Silk Touch mode collects the budding block itself. A filter item can restrict which blocks it breaks; an empty filter breaks anything. |
+| **Mechanical Cleaner** | Has every airflow function of the Encased Fan (blow/suck, filtering, an airflow range of 1–20 blocks), and additionally pulls items caught in the airflow into its own 27-slot inventory; without rotational power it still passively collects items directly in front of it. If a container sits directly in front, it exchanges items with that container directly, never dropping anything into the world. **Waterlogged while blowing**, it applies washing to items, equivalent to the Encased Fan's washing. |
+| **Night Vision Goggles** | Engineer's Goggles modified with an Echo Shard. While worn, a keybind toggles night vision (default `N`, rebindable in Controls), and the wearer is also immune to the Darkness effect. Wears in the vanilla helmet slot or a Curios head slot. |
+| **Echo Spyglass** | While in use, your line of sight passes through blocks and renders them as outlines, for up to 60 seconds per use. Sneak-right-click opens a filter screen that accepts an item or a Create List Filter; with no filter it matches `#c:ores` (all ores) by default. |
+| **Flammable Ice** | Flammable Ice (400 ticks) and Flammable Ice Blocks (4000 ticks) are both fuels, and both are listed among the superheated fuels for Create's Blaze Burner. Nine Flammable Ice craft into one Flammable Ice Block. |
 
 ---
 
 ## 4. World Generation
 
-Budding blocks generate at the depths of the ore they correspond to, usually **embedded inside ore veins** (Budding Diamond -64~16, Budding Raw Iron -24~56, Budding Raw Copper -16~112, Budding Raw Zinc -63~70, Budding Lapis Lazuli -64~64, Budding Redstone -63~15, and so on). Budding Glowstone appears at the bottom of naturally generated glowstone blobs, and Budding Flammable Ice only generates on the seafloor of deep oceans.
+Each budding block generates at the depth of its corresponding ore, usually embedded in a vein.
 
-**Every one of these can be toggled individually in the config file**, along with Flammable Ice rarity, the Glowstone budding replacement chance and the budding growth speed tiers.
-Modpack authors can also add budding blocks of their own with **KubeJS**, as many as they like (see "Adding Your Own Budding Blocks (KubeJS)" below).
+| Budding Block | Dimension | Y Range | Placement |
+| --- | --- | --- | --- |
+| Diamond | Overworld | −64 – 16 | Vein, rarity 1/16 |
+| Emerald | Overworld | −16 – 320 | Vein, rarity 1/16 |
+| Raw Iron | Overworld | −24 – 56 | Vein, rarity 1/16 |
+| Raw Gold | Overworld | −64 – 32 | Vein, rarity 1/16 |
+| Raw Copper | Overworld | −16 – 112 | Vein, rarity 1/16 |
+| Raw Zinc | Overworld | −63 – 70 | Vein, rarity 1/16 |
+| Lapis Lazuli | Overworld | −64 – 64 | Vein, rarity 1/16 |
+| Redstone | Overworld | −63 – 15 | Vein, rarity 1/16 |
+| Quartz | Nether | 10 above bedrock to 10 below the top | Vein, rarity 1/8 |
+| Glowstone | Nether | At natural glowstone blobs | Replaces the lowest block of a glowstone blob, at a chance set by `glowstoneBuddingChance` (default 0.5); `glowstoneGenerateBuds` and related keys control the buds that come with it |
+| Echo | Overworld | −64 – 0 | Deep Dark, generated inside Sculk |
+| Flammable Ice | Overworld | Below the deep-ocean seafloor | Structure, 1-in-256 per chunk (`flammableIceChance`), with soul sand scattered around it |
+| Rose Quartz | — | — | Does not generate naturally |
+| Fluix | — | — | Does not generate naturally |
 
-> ⚠️ **Naturally generated Budding Echo summons a Warden when broken.** Ones you place yourself will not.
+Each one can be toggled individually in the config file (`generate_<budding id>`). The Flammable Ice structure and Budding Glowstone have their own additional chance settings.
+
+> **Breaking a naturally generated Budding Echo summons a Warden.** The check reads the block's `can_summon` state, so a Budding Echo you placed yourself never triggers it.
 
 ---
 
 ## 5. Compatibility
 
-- **Required**: Create 6.0.10+
-- **Optional**: AE2 (enables Budding Fluix), Curios (goggles in the head slot), JEI, KubeJS (add your own budding blocks from a script)
-- **Without AE2 the mod starts normally** — it simply does not register the Fluix content
-- **AE2's Crystal Growth Accelerator also speeds up this mod's budding blocks** (it applies random ticks at its own configured interval); the Goggles growth multiplier counts it too
+| Mod | Relation | Notes |
+| --- | --- | --- |
+| Create | Required | 6.0.10+ |
+| AE2 | Optional | Enables Budding Fluix; AE2's own Growth Accelerator accelerates this mod's budding blocks too, and the Engineer's Goggles multiplier counts it |
+| Curios | Optional | Night Vision Goggles fit a Curios head slot (without Curios they use the vanilla helmet slot) |
+| JEI | Optional | Adds a "Budding Block Info" page: one page per budding block covering growth conditions, growth speed and generation conditions, reachable from the budding block, its buds, its cluster and the cluster's output |
+| KubeJS | Optional | Register your own budding blocks from a script, see the next section |
 
-Every machine ships with a Create-style Goggles info panel (growth status, work speed, growth multiplier) and **Ponder scenes**.
+Without AE2 the mod starts normally and simply does not register any Fluix content. Every machine provides the standard Engineer's Goggles information panel, and the budding blocks (including vanilla Budding Amethyst), both Accelerators, the Smart Drill and the Mechanical Cleaner each ship with a Ponder scene.
 
-**The "Budding Block Info" page in JEI**: one page per budding block — the budding block on the left with its cluster
-growing on top of it (sitting on Create's own JEI shadow sprite), the cluster's product in a slot at the top left
-(with Create's own arrow beside it — both the shadow and the arrow come from Create's `gui/jei/widgets.png`), and
-**Growth Conditions / Growth Speed / World Generation** spelled out on the right. All three sections stay
-**qualitative on purpose** — growth speed reads "Normal tier / slow / quick", world generation reads
-"deep underground · extremely rare" — so the chances, seconds and Y levels stay something you learn by playing
-(read the config file, or write your own JEI plugin page, if a pack needs the exact numbers).
-The budding block, its buds/cluster and the cluster's product are all look-up-able: pressing R or U on any of them
-in JEI leads to this page.
-The world-generation facts and the cluster's product are **read from the mod's own JSON at runtime** (worldgen /
-loot tables), so editing that JSON and rebuilding updates the page instead of drifting from reality — note that a
-client cannot see `data/` from datapacks, so a datapack overriding those files does not change the page. Budding blocks
-registered by KubeJS scripts, and those other mods list in `#c:budding_blocks`, show up here automatically too.
+The mod provides 31 advancements across five branches: budding blocks, accelerators, machines, equipment, and the deep ocean and Deep Dark.
 
 ---
 
-## Adding Your Own Budding Blocks (KubeJS)
+## 6. Adding Budding Blocks with KubeJS
 
-The growth engine is **public**: with **KubeJS** you can add budding blocks of your own — **as many as you like**,
-without writing Java and without a datapack. Even better, **one line registers the whole family** — the budding
-block, the small/medium/large buds and the cluster, five blocks at once.
+The growth engine is public, so you can register custom budding blocks with KubeJS — as many as you like, with no Java and no data pack.
+
+**One line registers a whole family**: the budding block plus its small bud, medium bud, large bud and cluster, five blocks in one call. Put the script under `kubejs/startup_scripts/`; the file name is free as long as it ends in `.js`.
 
 ```js
 StartupEvents.registry('block', event => {
@@ -108,261 +160,255 @@ StartupEvents.registry('block', event => {
 })
 ```
 
-That produces `kubejs:example_crystal_budding` plus `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`;
-the budding block's random ticks are already wired to the growth engine, and the buds/cluster carry the `FACING`
-property (so they grow pointing at the budding block). The `id` may include a namespace
-(`'mypack:example_crystal'`); without one it lands in the `kubejs` namespace.
-All five blocks also **show up in JEI's "Budding Block Info" page automatically** — growth speed, light and water
-requirements are all listed (as qualitative wording, e.g. "slow", "must be dark enough"), with no extra declaration needed.
+The resulting block ids are `kubejs:example_crystal_budding` and `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`. The budding block's random tick is already wired into the growth engine, and the buds and cluster carry a `FACING` property (pointing back at the budding block). Textures and sounds default to vanilla amethyst, so the script runs with no assets at all.
 
-### Complete example (copy & run)
+The `id` may include a namespace (`'mypack:example_crystal'`); without one it lands in the `kubejs` namespace.
 
-Drop this into `kubejs/startup_scripts/` (any file name, as long as it ends in `.js`) and you're done — no
-textures, no resource pack: the budding block and its buds/cluster use vanilla amethyst's textures by default.
+### Full Example
+
+Copy the following into `kubejs/startup_scripts/` and it runs as-is. The comments explain each option.
 
 ```js
 // kubejs/startup_scripts/my_crystal.js
 StartupEvents.registry('block', event => {
-  // The whole chain is `create`'s third argument. It has to sit here: options are read once,
-  // when `create` runs, so CustomBudding.create(event, id).chance(20) does nothing (the blocks
-  // are already built by then). Field-by-field assignment is equivalent and can be mixed:
-  // const opts = new CustomBuddingOptions(), then opts.chance = 20 …, then create(event, id, opts).
+  // The options object is the third argument to create. The chain must be written here: options
+  // are read once, at the moment create is called, so CustomBudding.create(event, id).chance(20)
+  // does not work — by then the blocks have already been built.
+  // Assigning fields and chaining are equivalent and can be mixed:
+  //   const opts = new CustomBuddingOptions()
+  //   opts.chance = 20 …
+  //   CustomBudding.create(event, id, opts)
   const family = CustomBudding.create(event, 'mypack:example_crystal', new CustomBuddingOptions()
-    .chance(20)                                  // 1-in-20 per random tick to advance one stage (default 5)
-    .maxLight(7)                                 // light ceiling for the growth spot, 0-15; negative = unlimited (default -1)
-    .minLight(1)                                 // light floor for the growth spot, 0-15; negative = unlimited (default -1)
-                                                 // both lines = only light 1-7 advances; one line = only that end is constrained
-                                                 // (Echo-style "must be pitch dark" is just .maxLight(0)); min above max is rejected
-    .requiresWater(false)                        // false = no water needed (default); flammable-ice style is .requiresWater()
-    .growthDimensions('minecraft:overworld')     // growth dimension ids, pick as many as you like: normal growth only there; omit = any dimension
-    .growthBiomes('warm')                        // growth biomes: a biome id, a biome tag ('#minecraft:is_nether') or a climate keyword ('cold' 'warm' 'hot')
-                                                 // prefix with ! to negate: '!cold' (anywhere but cold biomes), '!hot', '!#minecraft:is_taiga'
-                                                 // both lines = intersection => here: only the Overworld's warm biomes count as your turf
-    .outsideGrowthChance(0.1)                    // how much growth odds survive outside your turf (0-1, default 0.5; 0 = never grows there again); ignored when neither line above is set
-    .displayName('Example Budding Block')        // omit to let KubeJS name it from the id
-    .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // names of the four buds/cluster, small → medium → large → cluster; null keeps that one automatic
-    .dropItem('mypack:my_shard', 2)              // dropped by the cluster on a normal break (fortune adds 0..level more; silk touch always drops the cluster itself; omit for nothing)
+    .chance(20)                                  // 1-in-20 chance to advance a stage per random tick (default 5)
+    .maxLight(7)                                 // max light at the growth space, 0–15; negative = unlimited (default -1)
+    .minLight(1)                                 // min light at the growth space, 0–15; negative = unlimited (default -1)
+                                                 // both lines = only light 1–7 advances; one line = only that end is bound
+                                                 // (the Echo "must be pitch dark" case is just .maxLight(0))
+                                                 // a min above the max throws immediately
+    .requiresWater(false)                        // default false = no water needed
+                                                 // the Flammable Ice form is .requiresWater() (target must be a water source)
+    .growthDimensions('minecraft:overworld')     // growth dimension ids, multiple allowed; omit = any dimension
+    .growthBiomes('warm')                        // growth biomes, see "Growth Environment" below; omit = any biome
+                                                 // writing this and the line above intersects the two
+    .outsideGrowthChance(0.1)                    // chance to keep growing outside your turf (0–1, default 0.5)
+                                                 // 0 = never grows outside it; meaningless without the two lines above
+    .displayName('Example Budding Block')        // omit and KubeJS names it from the id
+    .stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')   // order: small → medium → large → cluster
+                                                 // pass null for one entry to keep its automatic name
+    .dropItem('mypack:my_shard', 2)              // what the cluster drops on a normal break (default: nothing)
+                                                 // Fortune adds 0–level per level; Silk Touch always drops the cluster itself
     .buddingTexture('mypack:block/my_crystal')   // budding block texture
-    .stageTextures('mypack:block/my_small_bud',  // four stage textures, same order
+    .stageTextures('mypack:block/my_small_bud',  // the four stage textures, same order as above
                    'mypack:block/my_medium_bud',
                    'mypack:block/my_large_bud',
                    'mypack:block/my_cluster')
-    .buddingSound('stone')                       // break sound of the budding block, a vanilla sound name ('stone' / 'crop' / 'glass' / 'wood' …); default 'amethyst'
-    .stageSound('crop')                          // break sound of the buds/cluster, shared by all four stages; default 'amethyst'
-    .buddingTool('axe')                          // mining tool of the budding block: pickaxe / axe / shovel / hoe (or a full tag id); default 'pickaxe'
-    .stageTool('pickaxe')                        // mining tool of the buds/cluster, shared by all four stages
-    .buddingLevel('stone')                       // harvest tier of the budding block: stone / iron / diamond; 'none' (or null, or omitting) = no tier
-    .stageLevel('stone')                         // harvest tier of the buds/cluster, shared by all four stages
-    .group('building_blocks'))                   // creative tab: 'kubejs' by default; null = no tab at all (only /give)
+    .buddingSound('stone')                       // break sound of the budding block, a vanilla sound name (default 'amethyst')
+    .stageSound('crop')                          // break sound of the buds and cluster, shared by all four stages
+    .buddingTool('axe')                          // mining tool of the budding block: pickaxe / axe / shovel / hoe
+                                                 // (or a full tag id); default 'pickaxe'
+    .stageTool('pickaxe')                        // mining tool of the buds and cluster, shared by all four stages
+    .buddingLevel('stone')                       // mining tier of the budding block: stone / iron / diamond
+                                                 // 'none', null or omitted = no tier
+    .stageLevel('stone')                         // mining tier of the buds and cluster, shared by all four stages
+    .group('building_blocks'))                   // creative tab: default 'kubejs', null = no tab at all
 
-  // family holds the five block ids (record accessors — the parentheses are required):
+  // family holds the five block ids; they are record accessors, so the parentheses are required:
   const budding = family.budding()               // 'mypack:example_crystal_budding'
   const cluster = family.cluster()               // 'mypack:example_crystal_cluster'
   console.info(`registered: ${budding} / ${cluster}`)
 })
 ```
 
-The block ids follow a fixed pattern: `<namespace>:<id>_budding` plus `_small_bud` / `_medium_bud` / `_large_bud` /
-`_cluster` (so `mypack:example_crystal_*` above). **Recipes and tags go in `server_scripts/`** (the startup script has
-no events for them) — just use those id strings, no need to reach back for `family`:
+### Option Reference
+
+Chained methods share their names with the fields; the two forms are equivalent and can be mixed. This table lists every option, with the default in parentheses.
+
+| Option | Value | Effect |
+| --- | --- | --- |
+| `chance(n)` | integer ≥ 1 (5) | A 1-in-n chance to advance a stage per random tick |
+| `maxLight(n)` | 0–15, negative = unlimited (−1) | Upper light bound at the growth space |
+| `minLight(n)` | 0–15, negative = unlimited (−1) | Lower light bound at the growth space |
+| `requiresWater()` | — (false) | Target space must be a water source block |
+| `growthDimensions(...)` | dimension ids, multiple allowed | Grows normally only in these dimensions |
+| `growthBiomes(...)` | biome ids / tags / climate keywords, multiple allowed | Grows normally only in these biomes |
+| `outsideGrowthChance(x)` | 0–1 (0.5) | Chance to keep growing outside your turf |
+| `displayName(s)` | string | Budding block display name; automatic if omitted |
+| `stageDisplayNames(...)` | four strings, `null` allowed | Display names of the four stages, order: small → medium → large → cluster |
+| `dropItem(id)` / `dropItem(id, n)` | item id, optional count (1) | What the cluster drops on a normal break |
+| `dropCount(n)` | integer (1) | Drop count; anything below 1 is treated as 1 |
+| `buddingTexture(s)` | texture path | Budding block texture (defaults to vanilla Budding Amethyst) |
+| `stageTextures(...)` | four texture paths | The four stage textures, same order |
+| `buddingSound(s)` / `stageSound(s)` | vanilla sound name (`amethyst`) | Break sound; an unknown name throws immediately and lists every valid name |
+| `buddingTool(s)` / `stageTool(s)` / `tool(s)` | tool name or full tag id (`pickaxe`) | Mining tool; `tool` sets both at once |
+| `buddingLevel(s)` / `stageLevel(s)` | tier name or full tag id (unset) | Mining tier; `'none'` or `null` = no tier |
+| `group(s)` | tab id (`kubejs`) | Creative tab; `null` = no tab |
+
+### Growth Environment
+
+Writing both `growthDimensions` and `growthBiomes` intersects them: a position counts as your turf only if its dimension *and* its biome both match. Outside your turf, every successful roll makes a second roll and only grows with probability `outsideGrowthChance`. Writing neither treats everywhere alike.
+
+Each `growthBiomes` entry may be:
+
+| Form | Example | Meaning |
+| --- | --- | --- |
+| Biome id | `'minecraft:lush_caves'` | That biome |
+| Biome tag | `'#minecraft:is_nether'` | Every biome in the tag |
+| Climate keyword | `'cold'` / `'warm'` / `'hot'` | Bucketed by base temperature; the Nether counts as `hot` everywhere and the End as `cold` |
+| Negation | `'!cold'`, `'!#minecraft:is_taiga'` | A leading `!` excludes |
+
+Hitting any negation drops the position immediately; otherwise at least one positive entry must match. When only negations are written, the positive side is treated as "every biome", so `growthBiomes('!cold')` reads as "anywhere but cold biomes".
+
+### Drops, Tools and Mining Tiers
+
+- **Drops**: buds drop themselves only under Silk Touch, whatever breaks them. Clusters drop what `dropItem(item, count)` names on a normal break and the cluster itself under Silk Touch; with no `dropItem` a normal break drops nothing. The count benefits from Fortune, adding 0–level per level, matching this mod's own cluster loot tables.
+- **Mining tool** decides *what mines fastest*. The bare names `pickaxe` / `axe` / `shovel` / `hoe` are the complete set of vanilla mining tags (`#minecraft:mineable/*`); any other bare name throws immediately, which prevents registering a tag nobody reads. You may also write a full block tag id (containing `:`, such as `'mymod:mineable/wrench'`). Writing `null` attaches no tag at all, making bare hands the fastest. Use `tool(...)` to give all five blocks the same tool.
+- **Mining tier** decides *what may collect the drop*. A bare name resolves to a vanilla tier tag, `#minecraft:needs_<name>_tool`: `'stone'` / `'iron'` / `'diamond'`. A full tag id also works (e.g. `'neoforge:needs_netherite_tool'`). Omitting it, or writing `'none'`, means no tier.
+
+  Setting a tier also gives the block `requiresCorrectToolForDrops`, because a bare tag is read by nothing on its own. That has two consequences: **a tool below the tier drops nothing at all**, Silk Touch included, and **the tool type must match as well** — with the budding block set to axe plus `'stone'`, a stone axe collects it and a stone pickaxe does not. To allow bare-hand collection, leave the tier unset, which is what this mod's own buds and clusters do.
+
+### What Comes Next
+
+Block ids follow a fixed pattern: `<namespace>:<id>_budding` and `_small_bud` / `_medium_bud` / `_large_bud` / `_cluster`. **Write recipes and tags in `server_scripts/`** (startup scripts have no such events) and use those id strings directly:
 
 ```js
 // kubejs/server_scripts/my_crystal.js
 ServerEvents.recipes(event => {
-  event.smelting('minecraft:amethyst_shard', 'mypack:example_crystal_cluster')   // example: smelt the cluster
+  event.smelting('minecraft:amethyst_shard', 'mypack:example_crystal_cluster')   // smelt the cluster into amethyst shards
 })
 
 ServerEvents.tags('block', event => {
-  event.add('minecraft:mineable/axe', 'mypack:example_crystal_budding')          // example: one more mining tag
+  event.add('minecraft:mineable/axe', 'mypack:example_crystal_budding')          // attach one more mining tag
 })
 ```
 
-- **Names**: the budding block uses `displayName('Example Budding Block')`; the four buds/cluster default to the English title KubeJS derives from the id (`example_crystal_small_bud` → "Example Crystal Small Bud"). Use `stageDisplayNames('Small Bud', 'Medium Bud', 'Large Bud', 'Cluster')` to change them — the order is small → medium → large → cluster, and passing `null` for one entry keeps that one automatic, so you can name only some of them. A block item shares its name with the block, so the inventory, drops and creative tab all follow.
-- **Goggles**: point Create Goggles at your budding block and the panel shows the current growth multiplier plus its growth speed / light requirement / water requirement / growth environment (dimensions and biomes), in qualitative terms only (no exact numbers). This mod's own families normally show just the multiplier line — the ones with `.growthDimensions(...)` / `.growthBiomes(...)` (and Budding Quartz / Budding Glowstone themselves) add a "Grows fastest only in X" line.
-- **The default textures are vanilla amethyst's**, so it works with zero assets; override the textures above or
-  ship a resource pack for your own art.
-- **Sounds, mining tools and harvest tiers all default to vanilla amethyst's too** (amethyst break sound, pickaxe,
-  no tier):
-  - Break sounds are written as **vanilla sound names** — `buddingSound('stone')` covers the budding block only,
-    `stageSound('crop')` covers the four buds/cluster (one sound for all of them). The valid names are the field
-    names of vanilla `SoundType`; an unknown name makes KubeJS fail on the spot and list every valid one.
-  - **Mining tools** (which decide **what mines it fastest**) come in two: `buddingTool('axe')` is the budding block's,
-    `stageTool('pickaxe')` covers the four buds/cluster (one tool for all of them). Each is one of `pickaxe` / `axe` /
-    `shovel` / `hoe` — the four vanilla mining tags `#minecraft:mineable/*` there are (any other bare name is rejected
-    on the spot, so you can't silently register a tag nobody reads) — or a full block tag id (containing `:`, e.g.
-    `'mymod:mineable/wrench'`). `null` registers no tag at all, so bare hands are fastest. The old combined
-    `tool('hoe')` still works and simply sets both of them.
-  - **Harvest tiers** (which decide **what tool can get the drops**) are split the same way: `buddingLevel('stone')`
-    is the budding block's, `stageLevel('stone')` covers the four buds/cluster. A bare name is one of the three
-    vanilla tier tags `#minecraft:needs_<name>_tool`: `'stone'` / `'iron'` / `'diamond'` (any other bare name is
-    rejected), or a full tag id (e.g. `'neoforge:needs_netherite_tool'`); leaving it out or writing `'none'`
-    means no tier. Setting a tier also adds `requiresCorrectToolForDrops` to the block (a tag alone is read by
-    nobody), so once it is set: **a tool below the tier gets no drops at all** (silk touch included), and **the tool
-    type has to match too** — with the budding block set to axe + `'stone'`, a stone axe drops it and a stone
-    pickaxe does not. Leave the tier unset to keep "bare hands still get the drops" (the default, and how this
-    mod's own buds/cluster behave).
-- The registered blocks go into the **creative "KubeJS" tab** by default (KubeJS blocks land in no tab at all
-  otherwise, which makes it look like registration failed). `group(...)` can point at a vanilla tab
-  (`'building_blocks'`, …); `.group(null)` keeps them out of every tab (then only `/give` gets them).
-- **Drops**: buds drop nothing unless you use silk touch (which drops the bud itself); on a normal break the cluster drops
-  whatever `dropItem(item, count)` names (nothing by default, **fortune adds 0..level more** — matching the loot tables of
-  this mod's own clusters), and itself with silk touch — same behaviour as this mod's own buds/cluster.
-- The returned `family` holds the five block ids, read through its record accessors: `family.budding()`,
-  `family.smallBud()`, `family.mediumBud()`, `family.largeBud()`, `family.cluster()` — these are **method calls,
-  the parentheses are required**; `family.budding` without them yields the method object, not the id. Handy when you
-  register more things in the same startup script; **recipes and tags live in `server_scripts/`**, where you just use
-  those id strings (see the end of the example above).
-- **Tags are automatic**: the budding block joins `#c:budding_blocks` (block + item) and all five blocks join the mining tag picked by `buddingTool(...)` / `stageTool(...)` plus the tier tag picked by `buddingLevel(...)` / `stageLevel(...)` (by default just `#minecraft:mineable/pickaxe` and no tier; blocks only, never the items) — so the Smart Drill's silk-touch mode harvests your budding block itself and AE2's Crystal Growth Accelerator speeds it up. No tags to write by hand.
-- Names and looks come from a resource pack / lang; drops are handled by this mod as described above.
+The value `create` returns, `family`, exposes five accessors for the block ids: `budding()` / `smallBud()` / `mediumBud()` / `largeBud()` / `cluster()`. They are **method calls, so the parentheses are required**; writing `family.budding` yields the method object rather than an id. They are useful for registering related items inside the same startup script, whereas `server_scripts/` should just use the id strings above.
 
-### Known limitations
+### Behavior Notes
 
-- They **do not appear in the config tiers** (the chance comes from your script), and baked-in block properties such as light emission or a redstone signal are not configurable either (for those, use the addon-mod route — see the Development section).
+- **Tags are attached automatically.** The budding block joins `#c:budding_blocks` (both the block and item tags). The five blocks join the matching mining tags via `buddingTool` / `stageTool` and the matching tier tags via `buddingLevel` / `stageLevel` (by default only `#minecraft:mineable/pickaxe`, with no tier). As a result the Smart Drill's Silk Touch mode collects your budding block directly and AE2's Growth Accelerator accelerates it, with no tags to write by hand.
+- **Goggles**: wearing Engineer's Goggles and looking at a custom budding block shows the current growth multiplier along with its growth speed, light requirement, water requirement and growth environment (dimension / biome, phrased qualitatively as "Slow" or "must be dark enough" without exact numbers). Built-in families normally show only the multiplier line; those with `growthDimensions` / `growthBiomes` gain an extra "fastest only in X" line.
+- **Creative tab**: KubeJS-registered blocks go into no tab by default, which makes people think registration failed, so these land in the KubeJS tab unless told otherwise. `group(...)` switches to a vanilla tab, and `group(null)` omits the tab entirely (reachable only via `/give`).
+- **Names and appearance** come from resource packs and language files. Without a display name, KubeJS derives an English title from the id (`example_crystal_small_bud` → "Example Crystal Small Bud"). The block item and the block share one translation key, so the inventory, dropped items and creative tab all change together.
 
-### Low-level API (build the definition yourself)
+### Known Limitations
+
+- The four growth speed tiers in the config file do not apply; the chance comes entirely from `chance` in the script.
+- Features **baked into block properties**, such as light emission and redstone output, cannot be configured from a script. Those require the addon Java route described in section 7.
+
+### Low-Level Interface
+
+For full control, load the growth engine and the definition class yourself and assemble them by hand. `CustomBudding` and `CustomBuddingOptions` are bound as script globals by this mod's KubeJS plugin and need no `Java.loadClass`; the engine and definition do.
 
 ```js
 const BuddingGrowthEngine = Java.loadClass('com.minecart.yunxian.budding.BuddingGrowthEngine')
 const GrowthDefinition  = Java.loadClass('com.minecart.yunxian.budding.GrowthDefinition')
 
-// of(small, medium, large, cluster, n): the four stage blocks plus chance base n (1-in-n per random tick).
-// Stage blocks are plain ids (vanilla buds, this mod's, your own). The call returns the definition itself,
-// so light, water and growth environment all chain onto it:
+// of(small, medium, large, cluster, n): the four stage blocks plus the chance base n (1-in-n per random tick).
+// Stage blocks are written as ids; vanilla amethyst buds, this mod's buds and clusters, and blocks you
+// registered yourself all work. The call returns the definition, so the chain continues from it:
 const definition = GrowthDefinition.of('minecraft:small_amethyst_bud', 'minecraft:medium_amethyst_bud',
                                        'minecraft:large_amethyst_bud', 'minecraft:amethyst_cluster', 20)
-    .growthDimensions('minecraft:overworld')   // growth dimensions, pick as many as you like
-    .growthBiomes('warm', '!hot')              // growth biomes: id / '#tag' / keyword cold·warm·hot; ! negates
-    .outsideGrowthChance(0.1)                  // how much growth odds survive outside your turf (0 = never, 1 = unlimited)
+    .growthDimensions('minecraft:overworld')   // growth dimensions, multiple allowed
+    .growthBiomes('warm', '!hot')              // growth biomes: ids / '#tags' / keywords cold·warm·hot; ! negates
+    .outsideGrowthChance(0.1)                  // chance to keep growing outside your turf (0 = never)
 
-// Light and water requirements chain the same way (light 0-15, negative = that end unlimited;
-// min above max is rejected):
-//   .maxLight(7).minLight(1)   // advances only at light 1-7 (Echo-style "pitch dark" is just .maxLight(0))
-//   .requiresWater()           // target must be a water source (flammable-ice style)
-// The full of(...) overloads work too: of(small, medium, large, cluster, n, maxLight, minLight, requiresWater),
-// or of(small, medium, large, cluster, n, maxLight, requiresWater) for a ceiling only.
+// Light and water live on the same chain (light 0–15, negative = that end unbounded; a min above the max throws):
+//   .maxLight(7).minLight(1)   // only light 1–7 advances
+//   .requiresWater()           // target must be a water source
+// The full overload of of() also works: of(small, medium, large, cluster, n, maxLight, minLight, requiresWater);
+// when only the max is wanted, omit the min: of(small, medium, large, cluster, n, maxLight, requiresWater).
 
 event.create('my_budding').randomTick(ctx => {
   BuddingGrowthEngine.tryGrow(ctx.block.getLevel(), ctx.block.getPos(), ctx.random, definition)
 })
 ```
 
-> ⚠️ Building the definition at the top level like this is safe while the stage blocks are vanilla or your own.
-> **If the definition references another mod's blocks**, build it inside the `randomTick` callback and cache it —
-> those blocks are not registered yet when startup scripts run, so a top-level call fails on the spot.
+> Building the definition at the top level of the script is safe, because the stage blocks are either vanilla or ones you registered yourself. **If the definition references another mod's blocks**, it must move into the `randomTick` callback and be cached there: those blocks are not registered yet when the script runs, and building it at the top level throws immediately.
 
-See the "Complete example (copy & run)" above; a local dev copy lives at
-`run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
+A runnable example also ships in the local development directory: `run/kubejs/startup_scripts/custom_budding_example.js`. `run/` is listed in `.gitignore` and is not distributed with the repository.
 
 ---
 
-## Development: Adding a Budding Family & Data Generation
+## 7. Development
 
-Everything that defines a budding family (light/water/energy requirements, growth rule, block
-conversion, light levels, sounds, drops) lives in one table:
-`src/main/java/com/minecart/yunxian/budding/BuddingFamilies.java` — **adding a family means adding
-one entry there**. Block registration, growth logic, goggles tooltips, the creative tab, the world-gen
-config flag and Ponder registration are all derived from it.
-The one exception is growth speed: it is a global four-tier setting (`BuddingFamily.GrowthSpeed`)
-driven by four id lists in the config file, and the default members of the NORMAL tier are derived
-from this table too — a new family needs no extra configuration.
+### Adding a Budding Block
 
-Generate the JSON assets with `./gradlew runData`. **AE2 must be present in `run/mods`** (the run
-aborts otherwise, to avoid treating the already-generated Fluix assets as stale and deleting them).
-Output goes to `src/generated/resources`, which is committed. These are now generated — do not
-hand-write them: `blockstates/`, `models/block/`, `models/item/`, the budding and bud loot tables,
-the `c:budding_blocks` tags, and the `mineable/pickaxe` / `needs_*_tool` tags.
+Every trait of a budding block — light, water and power requirements, growth rules, block conversion, light and sound, drops — lives in a single table in
+`src/main/java/com/minecart/yunxian/budding/BuddingFamilies.java`. **Adding a budding family amounts to adding one entry to that table**; block registration, growth logic, Goggles readouts, creative tabs, world generation switches and Ponder entries are all derived from it.
 
-Still hand-written: textures (and `.mcmeta`), the cluster and Fluix loot tables (their structure and
-mod conditions cannot be reproduced faithfully by the generator), world-gen JSON, and lang files.
+Growth speed is the exception: it is a global four-tier setting (`BuddingFamily.GrowthSpeed`) driven by the four id lists in the config file, and the default membership of the Normal tier is likewise derived from that table, so a new family needs no extra configuration.
 
-### For Addon Mods & KubeJS: Plugging a Block Into the Growth Engine
+### Data Generation
 
-The growth check and placement are **public** (`budding/BuddingGrowthEngine`), and three kinds of
-callers share one code path: this mod's own budding blocks, addon blocks, and KubeJS-registered blocks.
-The engine deliberately **excludes** random-tick side effects (conversion/spread) and growth energy —
-the block owns those, and energy is paid through a `GrowthGate` callback right before placement.
+Generate the JSON assets with `./gradlew runData`. **AE2 must be present in `run/mods` before running it**, otherwise the task aborts outright — this is what prevents the already-generated Fluix assets from being judged stale and deleted. The output directory `src/generated/resources` is under version control.
 
-**Addon mod (Java)**
+Data generation owns the following files; do not write them by hand: `blockstates/`, `models/block/`, `models/item/`, the loot tables for budding blocks and buds, the `c:budding_blocks` tags, and the `mineable/pickaxe` and `needs_*_tool` tags.
+
+Still hand-written: textures (including `.mcmeta`), the loot tables for clusters and Fluix (their structure and mod conditions cannot be reproduced by the generator), world generation JSON, and language files.
+
+### Wiring a Block Into the Growth Engine
+
+Growth checks and placement are public (`budding/BuddingGrowthEngine`), and three kinds of caller share one code path: this mod's own budding blocks, an addon's blocks, and blocks registered from a KubeJS script. The engine deliberately **excludes** random-tick side effects (conversion and spreading) and growth energy; the block owns those, and energy is requested through a `GrowthGate` callback before placement.
+
+**Addon mods (Java)**
 
 ```java
-// 1) Your own budding block: either use the public GenericBuddingBlock (pass your own buds/cluster),
+// 1) Your budding block: either use the public GenericBuddingBlock (passing your own buds/cluster),
 //    or implement randomTick yourself and call the engine
 DeferredBlock<Block> myBudding = MY_BLOCKS.register("my_budding",
         () -> new GenericBuddingBlock(myFamilySpec, properties, small, medium, large, cluster));
 
-// 2) Declare it in your @Mod constructor (must happen before the block registry event):
-BuddingRegistration.declareBuddingBlock(myBudding.get());   // use the shared Goggles BE
-BuddingRegistration.declareKnownId("my_budding");           // let the config tiers list it
+// 2) Declare it in your own @Mod constructor (must happen before the block registration event):
+BuddingRegistration.declareBuddingBlock(myBudding.get());   // use the shared Goggles block entity
+BuddingRegistration.declareKnownId("my_budding");           // let the four config tiers list it
 ```
 
-`declareBuddingBlock` is not optional politeness: restoring a block entity from chunk NBT validates
-`BlockEntityType#isValid` (`LevelChunk:392`), so a block missing from the shared BE's block list has
-its **block entity dropped on chunk reload** — the Goggles info silently stops working.
+`declareBuddingBlock` is not a courtesy call you can skip: when a chunk restores block entities from NBT it validates `BlockEntityType#isValid` (`LevelChunk:392`), and a block absent from the shared block entity's valid-block list has its block entity **discarded after a chunk reload**, at which point the Goggles readout stops working.
 
-Blocks built on `GenericBuddingBlock` are done after those two steps: they carry a family definition,
-so JEI's Budding Block Info page can read their behaviour straight away. A block written against the
-**low-level API** (your own `randomTick` calling the engine) has no definition to read, so declare one:
+A block built on `GenericBuddingBlock` is complete at this point: it carries its own family definition, which the JEI Budding Block Info page reads directly. Blocks that **assemble the low-level interface themselves** (implementing `randomTick` and calling the engine) have no definition to read, so they need one more declaration:
 
 ```java
-// 3) Let JEI's "Budding Block Info" page list its growth speed / light / water requirements
+// 3) Let the JEI "Budding Block Info" page list its growth speed / light / water requirements
 BuddingRegistration.declareGrowthDefinition(myBudding.get(),
         () -> GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
 ```
 
-The definition is a `Supplier`, so calling this before the stage blocks exist is safe (which is exactly
-the case for script registration).
+Definitions are taken lazily through a `Supplier`, so calling this before the block and its stage blocks exist is safe — which is exactly the situation during script registration.
 
-**KubeJS (modpack authors, no Java)**
-
-See "Adding Your Own Budding Blocks (KubeJS)" above: with KubeJS installed, one line —
-`CustomBudding.create(event, 'my_crystal', 20)` — registers the whole five-block family (the binding comes from
-this mod's KubeJS plugin). For hand-rolled blocks, use
-`GrowthDefinition.of(small, medium, large, cluster, n)` plus the engine (optional light bounds, a water
-requirement, and a growth environment — dimensions and/or biomes — can be appended; see the example above).
-See the complete example in the "Adding Your Own Budding Blocks (KubeJS)" section; a local dev copy lives at
-`run/kubejs/startup_scripts/custom_budding_example.js` (`run/` is gitignored, so it is not shipped with the repo).
-
-**The two ways to call the engine**
+**The two call forms of the engine**
 
 ```java
-// Free growth (what scripts and most addons use)
+// Free growth (the common case for scripts and addons)
 BuddingGrowthEngine.tryGrow(level, pos, random, GrowthDefinition.of(smallBud, mediumBud, largeBud, cluster, 20));
 
-// With a payment gate (how this mod's own families work: Budding Fluix spends AE before placing)
+// With the paid hook (this mod's own families use it: the AE2 budding block pays energy before placement)
 BuddingGrowthEngine.tryGrow(serverLevel, pos, random, definition, gate);
 ```
 
-A definition can carry one more requirement: `growthDimensions(Level.NETHER)` (pass several for several dimensions)
-restricts normal growth to those dimensions, `growthBiomes("minecraft:lush_caves")` narrows it further by biome,
-and the two combine as an intersection — everywhere else every successful roll keeps only
-`outsideGrowthChance(0.5)` of its odds (0.5 is exactly how Budding Quartz and Budding Glowstone are set up;
-write 0 and they never grow outside their turf again).
+A definition can take further gates: `growthDimensions(Level.NETHER)` restricts normal growth to the listed dimensions, and `growthBiomes("minecraft:lush_caves")` adds a biome filter. Writing both intersects them; outside your turf each successful check makes a second roll and only grows with probability `outsideGrowthChance(0.5)` — 0.5 is exactly what Budding Quartz and Budding Glowstone use, and 0 stops growth there entirely.
 
-Biome entries take a biome id, a biome tag (`"#minecraft:is_nether"`), a climate keyword
-(`"cold"` / `"warm"` / `"hot"`), or any of those prefixed with `!` to mean "not this". Negatives win: matching one
-drops that biome outright; otherwise at least one positive has to match, and if you wrote only negatives they mean
-"anywhere but these".
+Biome entries resolve in this order: hitting any **negation** drops the position immediately; otherwise at least one **positive** entry must match; when only negations are written, the positive side counts as "every biome" (`growthBiomes("!cold")` means anywhere but cold biomes).
 
-The climate keywords are binned like this:
+Everything else is yours to supply: block registration and textures, items, loot tables, and adding the block to the `#c:budding_blocks` tag (the Smart Drill's Silk Touch mode and AE2's Growth Accelerator read it).
 
-| Keyword | Covers |
+### Climate Keywords
+
+How the `cold` / `warm` / `hot` keywords are bucketed:
+
+| Keyword | Coverage |
 | --- | --- |
-| `cold` | **the whole End**, or base temperature < 0.3 (snowy plains, ice spikes, snowy taiga, frozen ocean, snowy slopes, frozen peaks, plus cool biomes like taiga and mountains) |
-| `warm` | everything else (plains, forest, jungle, swamp, ocean, mushroom fields, stony peaks…) |
-| `hot` | **the whole Nether**, or base temperature ≥ 1.2 (desert, badlands, savanna) |
+| `cold` | The whole End, or a biome base temperature below 0.3 (snowy plains, ice spikes, snowy taiga, frozen ocean, snowy slopes, frozen peaks, plus cool biomes such as taiga and windswept hills) |
+| `warm` | Everything else (plains, forest, jungle, swamp, ocean, mushroom fields, stony peaks, …) |
+| `hot` | The whole Nether, or a biome base temperature of at least 1.2 (desert, badlands, savanna) |
 
-"The whole End/Nether" rides on the biome tags (`#minecraft:is_end` / `#minecraft:is_nether`), so modded dimensions
-built from those biomes count too; tune the thresholds via the two constants in `GrowthEnvironment.Climate`.
-
-Everything else is yours: block/item registration, textures, the loot table, and adding the block to
-the `#c:budding_blocks` tag (the Smart Drill's precise harvest and AE2's growth accelerator read it).
+The "whole End / whole Nether" cases go through the biome tags `#minecraft:is_end` / `#minecraft:is_nether`, so modded dimensions using those biome sets count as well. The thresholds are adjustable: the two constants in `GrowthEnvironment.Climate`.
 
 ---
 
 ## License
 
-**This mod may only be included in modpacks published on CurseForge, with no further permission required** — public or private, free or monetized.
+**This mod may be included in modpacks published on CurseForge without asking for permission** — public or private, free or monetized.
 
-The pack must use **CurseForge's standard packaging method**: reference this mod in `manifest.json` by its CurseForge project ID and file ID, so the launcher downloads it from CurseForge. **Bundling the jar inside the pack archive is not allowed**, and neither is publishing the pack on any platform other than CurseForge. The condition is attribution: credit **YunXian_LI** and link back to the official download page.
+The modpack must use **the CurseForge packaging method**: reference this mod in `manifest.json` by CurseForge project ID and file ID so the launcher downloads it from CurseForge itself. **Do not bundle the mod jar inside the archive**, and do not publish it on any platform other than CurseForge. The condition is that you credit the author (YunXian_LI) and link to the official download page.
 
 See [LICENSE.txt](LICENSE.txt) for the full terms.
