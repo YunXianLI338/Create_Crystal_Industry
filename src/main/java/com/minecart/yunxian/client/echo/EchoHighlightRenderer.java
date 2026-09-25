@@ -3,6 +3,7 @@ package com.minecart.yunxian.client.echo;
 import com.minecart.yunxian.item.EchoSpyglassItem;
 import com.minecart.yunxian.client.ModRenderTypes;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.logging.LogUtils;
@@ -40,6 +41,26 @@ public final class EchoHighlightRenderer {
     // ===== 轮廓合并缓存 =====
     private static int cachedVersion = -1;
     private static Set<EdgeKey> cachedEdges = Set.of();
+
+    /**
+     * 画线框专用的缓冲源，和游戏主缓冲源分开。
+     * <p>
+     * <b>绝对不要改用 {@code mc.renderBuffers().bufferSource()}。</b> Iris 会注入
+     * {@code RenderBuffers.bufferSource()} 的入口，把它换成自己的 {@code FullyBufferedMultiBufferSource}：
+     * 那个实现只把顶点按 RenderType 攒成 BufferSegment，等它自己挑时机再统一重放。
+     * 而我们的线框"能透过方块看见"完全靠冲刷那一刻全局深度测试是关着的
+     * （{@code NO_DEPTH_TEST} 这个 shard 在原版里是空操作，真正起作用的是我们自己那句
+     * {@code disableDepthTest()}），顶点一旦被挪到别处重放，就会落进别人的深度状态——
+     * 表现就是线框被方块挡住、和方块面 z-fighting 闪个不停，也就是玩家报的那个现象。
+     * <p>
+     * 自己 new 一个不经过 RenderBuffers 的缓冲源，Iris 就接管不到：{@code endBatch} 会当场
+     * {@code setupRenderState()} → 立即绘制 → {@code clearRenderState()}，状态窗口不被破坏。
+     * <p>
+     * 容量照搬原版关卡缓冲源（768 KiB），不够时 ByteBufferBuilder 会自己扩容；
+     * 这块原生内存随缓冲源长期持有，和为它多开的一块缓冲区，量很小。
+     */
+    private static final ByteBufferBuilder ECHO_BUFFER = new ByteBufferBuilder(786432);
+    private static final MultiBufferSource.BufferSource ECHO_BUFFERS = MultiBufferSource.immediate(ECHO_BUFFER);
 
     private EchoHighlightRenderer() {
     }
@@ -87,11 +108,30 @@ public final class EchoHighlightRenderer {
         poseStack.pushPose();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
+        // ColorModulator 不在 RenderType 的控制范围内，谁都能改：position_color.fsh 的最终颜色是
+        // 顶点色 * ColorModulator，所以别的模组（Goety / Goety Twilight 的法术特效就会）调
+        // RenderSystem.setShaderColor 之后不还原，线框的颜色连同 alpha 会被一起乘掉——
+        // 表现是线框变淡、看不见、还随对方的动画一帧一帧地闪。这里自己钉成白色，
+        // 不去赌"前面那段渲染会替我们还原"。注意 getShaderColor() 返回的是内部数组本身，
+        // 必须先把四个分量抄出来，不能存引用（照 BuddingInfoCategory 的写法）。
+        float[] incomingShaderColor = RenderSystem.getShaderColor();
+        float prevR = incomingShaderColor[0];
+        float prevG = incomingShaderColor[1];
+        float prevB = incomingShaderColor[2];
+        float prevA = incomingShaderColor[3];
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         try {
-            MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-            VertexConsumer consumer = buffers.getBuffer(ModRenderTypes.ECHO_ORE_OVERLAY_QUADS);
+            // 显式绑回主帧缓冲。这个阶段画的时候不保证绑的是主缓冲：「极致」画质下粒子是画进
+            // particles 中间缓冲的，别的模组也可能在同一个阶段留下一张自己的缓冲。
+            // 一旦画进那种缓冲，线框要么被当成最远的一层盖掉，要么根本不会被合成出来。
+            mc.getMainRenderTarget().bindWrite(false);
+
+            // 用专用缓冲源，别借 mc.renderBuffers().bufferSource()（Iris 会把它换成延迟批处理的实现，
+            // 顶点被挪到别处重放，我们的深度状态窗口就失效了——详见 ECHO_BUFFERS 的说明）
+            VertexConsumer consumer = ECHO_BUFFERS.getBuffer(ModRenderTypes.ECHO_ORE_OVERLAY_QUADS);
             PoseStack.Pose pose = poseStack.last();
 
             for (EdgeKey edge : edges) {
@@ -107,8 +147,9 @@ public final class EchoHighlightRenderer {
                 addThickEdge(consumer, pose, a, b, camPos, pixelToWorldPerDistance, alpha);
             }
 
-            buffers.endBatch(ModRenderTypes.ECHO_ORE_OVERLAY_QUADS);
+            ECHO_BUFFERS.endBatch(ModRenderTypes.ECHO_ORE_OVERLAY_QUADS);
         } finally {
+            RenderSystem.setShaderColor(prevR, prevG, prevB, prevA);
             RenderSystem.depthMask(true);
             RenderSystem.enableDepthTest();
         }
