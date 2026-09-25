@@ -12,7 +12,7 @@
     "overrides": [
         {
             "predicate": { "create_crystal_industry:using": 1.0 },
-            "model": "create_crystal_industry:item/echo_spyglass_in_hand_hidden"
+            "model": "create_crystal_industry:item/echo_spyglass_using"
         }
     ]
 }
