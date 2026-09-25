@@ -32,7 +32,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 
@@ -50,14 +49,16 @@ public class ModRenderers {
             new ModelResourceLocation(
                     ResourceLocation.fromNamespaceAndPath(Yunxian.MODID, "night_vision_goggles"), "inventory");
 
+    /**
+     * 只允许由客户端调用（入口见 {@link Yunxian} 里那个 {@code FMLEnvironment.dist.isClient()} 判断）——
+     * 这个类本身是客户端专用的，服务端够不到它就不该有任何入口。
+     */
     public static void register(IEventBus modEventBus) {
         modEventBus.addListener(ModRenderers::onClientSetup);
         modEventBus.addListener(ModRenderers::onAddLayers);
         modEventBus.addListener(ModRenderers::onRegisterAdditional);
         modEventBus.addListener(ModRenderers::onModifyBakingResult);
-        if (FMLEnvironment.dist.isClient()) {
-            EchoHighlightRenderer.register();
-        }
+        EchoHighlightRenderer.register();
         EchoSpyglassScopeOverlay.register();
         CameraSync.register();
         EchoSpyglassUseRenderer.register();

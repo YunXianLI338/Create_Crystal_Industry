@@ -18,6 +18,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(Yunxian.MODID)
@@ -48,7 +49,13 @@ public class Yunxian {
         // 所以走 UseItemOnBlockEvent 这个对任何物品都生效的钩子，见该类注释
         NeoForge.EVENT_BUS.addListener(CrystalBatteryInteractions::onUseItemOnBlock);
         modEventBus.addListener(Yunxian::commonSetup);
-        ModRenderers.register(modEventBus);
+        // ModRenderers 整个类都是客户端专用的：它的类级字段是 ModelResourceLocation / PartialModel，
+        // 引用的 EchoSpyglassHeadLayer 还继承客户端的 RenderLayer。专用服务端一旦加载到这个类就会
+        // NoClassDefFoundError: net/minecraft/client/renderer/entity/layers/RenderLayer。
+        // 拦截必须放在这里——放进 ModRenderers.register 内部判断是没用的，那时类已经被加载了。
+        if (FMLEnvironment.dist.isClient()) {
+            ModRenderers.register(modEventBus);
+        }
         ModFeatures.register(modEventBus);
         ModArmInteractionPointTypes.register(modEventBus);
         modEventBus.addListener(ModBlockEntities::registerCapabilities);
