@@ -19,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * 让可燃冰燃料越过 Create 的「超热燃料不许排队」限制：燃烧室已处于 SEETHING 时，
- * 可燃冰照样能一件一件灌下去，上限与普通燃料同为 {@code MAX_HEAT_CAPACITY}（10000 tick）。
+ * 可燃冰照样能一件一件灌下去，上限与普通燃料同为 {@code MAX_HEAT_CAPACITY}（10000 tick，即 500 秒），
+ * 喂满就拒收。
  *
  * <h2>Create 原本的规则</h2>
  * {@code BlazeBurnerBlockEntity#tryUpdateFuel} 对<b>同种</b>燃料的续加分三条路：
@@ -39,7 +40,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * {@code GETSTATIC FuelType.NORMAL} 也不行——同一个常量在方法里还被三处赋值语句读着，
  * 按 ordinal 定位既脆又会误伤。所以在方法最前面接管「原版必定拒绝」的那一段，
  * 其余情形一律 {@code return} 交给原版，边界反而最清楚：
- * <b>原版管 ≤500 的叠加，我们只补 >500 的那一段</b>。
+ * <b>原版管 ≤500 的叠加，我们只补 500 &lt; t &lt; 10000 的那一段，到顶由我们拒收</b>。
  *
  * <h2>判据</h2>
  * 「本模组命名空间 + 出现在 {@code create:superheated_blaze_burner_fuels} 数据表里」。
@@ -48,6 +49,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *
  * <h2>边界</h2>
  * <ul>
+ *   <li>喂满就收手：{@code remainingBurnTime} 够到 {@link BlazeBurnerBlockEntity#MAX_HEAT_CAPACITY}
+ *       时回 {@code false}，手里那件留在手上。原版那条溢出分支（只对普通燃料开放）在到顶时是把燃烧时间
+ *       原样写回、<b>仍然回 true</b>；照抄这个写法，喂满之后每右键一次就白搭一件燃料。宁可到顶即拒；</li>
  *   <li>只对 {@code forceOverflow == true} 生效，也就是<b>玩家手持右键</b>。机械臂走的是
  *       {@code AllArmInteractionPointTypes} 里 {@code forceOverflow = false} 的那条路，
  *       维持 Create 原样，免得机器把超热燃料无限灌满；</li>
@@ -93,6 +97,13 @@ public abstract class BlazeBurnerBlockEntityMixin {
         int burnTime = yunxian$superheatedFuelBurnTime(itemStack);
         if (burnTime < 0)
             return;
+
+        // 已经喂满（10000 tick = 500 秒）：一件也塞不进去了。原版的溢出分支到顶时只把燃烧时间原样
+        // 写回、照样回 true，物品会被白白吃掉；这里直接拒收，手里那件不动，也免得客户端先冒一圈粒子。
+        if (remainingBurnTime >= BlazeBurnerBlockEntity.MAX_HEAT_CAPACITY) {
+            cir.setReturnValue(false);
+            return;
+        }
 
         if (simulate) {
             cir.setReturnValue(true);

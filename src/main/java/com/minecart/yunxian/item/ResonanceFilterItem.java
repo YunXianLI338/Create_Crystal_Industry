@@ -12,6 +12,7 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +26,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -130,6 +132,28 @@ public class ResonanceFilterItem extends FilterItem {
             summary.add(Component.translatable("create_crystal_industry.resonance_filter.network_name.tooltip", name)
                     .withStyle(ChatFormatting.GRAY));
         return summary;
+    }
+
+    /**
+     * 简介常驻，按住 Shift 不再收起。
+     * <p>
+     * Create 的 {@code FilterItem#appendHoverText} 第一句就是「按住 Shift 直接 return」
+     * （{@code AllKeys.shiftDown()}），那是它给列表过滤器与属性过滤器定的习惯：悬停默认铺简介、
+     * 按住 Shift 收起来。共振过滤器的简介只有一两行，说的又是「接没接入网络」这种一上手就该知道的事，
+     * 收起来反而像没有提示。所以这里把 Create 那段排版照抄一遍，只去掉那次提前返回。
+     * <p>
+     * <b>不能调 {@code super}</b>：它按住 Shift 会提前返回，不按的时候又会把摘要加一份，
+     * 这里再加一份就重复了。摘要为空时什么也不加，否则先空一行再铺摘要，
+     * 与 Create 的排版（{@code CommonComponents.SPACE}）一致。
+     */
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip,
+                                TooltipFlag flag) {
+        List<Component> summary = makeSummary(stack);
+        if (summary.isEmpty())
+            return;
+        tooltip.add(CommonComponents.SPACE);
+        tooltip.addAll(summary);
     }
 
     // ==================== 名字副本 ====================

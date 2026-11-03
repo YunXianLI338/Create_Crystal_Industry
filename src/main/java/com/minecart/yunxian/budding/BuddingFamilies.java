@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,8 @@ import com.minecart.yunxian.registry.ModTags;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -317,6 +320,9 @@ public final class BuddingFamilies {
      * 侵染同理<b>只有</b>「远古残骸 → 本母岩」这一条再生传播，<b>没有</b>「石头 → 矿石」那一档
      * ——它不会把任何方块变成远古残骸，只是自己会从远古残骸里长出来；这条传播也标了
      * {@code gated()}，一样要付 250 mB。因此想复制一块母岩，得拿远古残骸贴着它、罐里还得有熔岩。
+     * <p>
+     * 母岩、三档芽与晶簇的<b>物品</b>都是耐火的（{@code minecraft:fire_resistant}），掉进熔岩与火里
+     * 不会被烧掉，和原版下界合金物品同一档——家族表里唯一把末位开关打开的就是它。
      */
     private static RegisteredFamily ancientDebris() {
         List<BlockConversion> conversions = List.of(
@@ -338,7 +344,7 @@ public final class BuddingFamilies {
         // data/create_crystal_industry/worldgen 与 neoforge/biome_modifier 下的同名 JSON
         return register(new BuddingFamily("ancient_debris", BuddingModel.CUBE_COLUMN, ToolTier.DIAMOND, true,
                 WorldGen.of("ancient_debris_budding_vein", "ancient_debris_budding_vein"), false,
-                () -> Blocks.ANCIENT_DEBRIS, growth, appearance));
+                () -> Blocks.ANCIENT_DEBRIS, growth, appearance, true));
     }
 
     /**
@@ -437,13 +443,26 @@ public final class BuddingFamilies {
         DeferredBlock<Block> cluster = stage(spec, Stage.CLUSTER);
 
         DeferredBlock<Block> budding = ModBlocks.registerBlock(spec.buddingId(),
-                () -> newBuddingBlock(spec, buddingProperties(spec), smallBud, mediumBud, largeBud, cluster));
+                () -> newBuddingBlock(spec, buddingProperties(spec), smallBud, mediumBud, largeBud, cluster),
+                familyItem(spec));
 
         return new RegisteredFamily(spec, budding, smallBud, mediumBud, largeBud, cluster);
     }
 
     private static DeferredBlock<Block> stage(BuddingFamily spec, Stage stage) {
-        return ModBlocks.registerBlock(spec.stageId(stage.key), () -> newStageBlock(spec, stage));
+        return ModBlocks.registerBlock(spec.stageId(stage.key), () -> newStageBlock(spec, stage), familyItem(spec));
+    }
+
+    /**
+     * 母岩与芽/簇共用的物品工厂：耐火家族（目前只有远古残骸）的物品带 {@code minecraft:fire_resistant}
+     * 组件，掉进熔岩或火里不会被烧掉，与原版下界合金物品同一档。
+     * <p>
+     * 开关在家族表里（{@link BuddingFamily#fireResistant()}），这里只负责把它翻成物品属性；
+     * 方块本身不受影响——原版方块本来就不会被熔岩毁掉。
+     */
+    private static BiFunction<Block, Item.Properties, BlockItem> familyItem(BuddingFamily spec) {
+        return (block, properties) -> new BlockItem(block,
+                spec.fireResistant() ? properties.fireResistant() : properties);
     }
 
     private static GenericBuddingBlock newBuddingBlock(BuddingFamily spec, BlockBehaviour.Properties properties,

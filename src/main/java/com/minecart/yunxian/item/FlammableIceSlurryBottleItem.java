@@ -19,7 +19,8 @@ import net.minecraft.world.item.UseAnim;
  * 它同时也是件燃料（见燃料数据映射），所以带着 {@code craftRemainder(玻璃瓶)}：
  * 塞进烈焰人/冷却器烧掉时，那一份"剩下的容器"会被还回来。
  * <p>
- * 正途则是拿去加工：机械手蘸岩浆膏一压就成可燃冰圣代（{@code create:deploying}）。
+ * 正途则是拿去加工：机械手蘸岩浆膏一压就成可燃冰圣代（{@code create:deploying}），
+ * 这一次不还瓶——容器余物只留给「当燃料烧掉」那一路（见 {@code BeltDeployerCallbacksMixin}）。
  */
 public class FlammableIceSlurryBottleItem extends Item {
 

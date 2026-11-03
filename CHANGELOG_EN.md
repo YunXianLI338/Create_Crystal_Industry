@@ -12,7 +12,28 @@ section at the top.
 
 ---
 
-## 1.0.9 · 2026-10-18 ~ 2026-10-25
+## 1.0.10 · 2026-10-30
+
+### Added
+
+- The Mechanical Accelerator's item tooltip now carries a Create-style Stress Impact entry, with the exact multiplier shown while wearing Engineer's Goggles.
+- Both the Electric Accelerator and the Mechanical Accelerator can be quickly dismantled with a sneak right-click of a Wrench, and rotated with a normal right-click.
+
+### Changed
+
+- Ancient Debris Budding Blocks, Buds and Clusters are no longer destroyed by lava or fire when dropped as items, matching vanilla Netherite items.
+- The Resonance Filter's summary is now always shown; holding Shift no longer hides it.
+- Right-clicking the Mechanical Cleaner's bottom (shaft) face no longer opens its screen.
+- The Mechanical Accelerator's stress impact is reduced from 32x to 16x.
+
+### Fixed
+
+- A Deployer no longer hands back an extra Glass Bottle after turning a Flammable Ice Slurry Bottle into a Flammable Sundae.
+- The Mechanical Cleaner screen now shows the "Inventory" label above the player's inventory.
+- The Mechanical Cleaner's "=" mode no longer behaves the same as "≤" when sucking from a container; it now pulls only once a full batch is available.
+- The Mechanical Cleaner's direct container transfer now runs at a cadence set by its rotation speed instead of ignoring it.
+
+## 1.0.9 · 2026-10-18 ~ 2026-10-29
 
 ### Added
 
@@ -37,6 +58,7 @@ section at the top.
 - Smart Temperature Chambers only draw their connected textures between chambers that actually share capacity, so two pieces left side by side after one is removed no longer join up.
 - Smart Temperature Chambers now rejoin only as rectangles after one piece is removed, instead of carrying the old connections across the gap.
 - A Pressure Relief Hatch now vents a single kind of item per batch instead of mixing several kinds into one batch.
+- Blaze Burners filled to 500 seconds no longer accept Flammable Ice, so the item in hand is not spent for nothing.
 
 ## 1.0.8 · 2026-10-09 ~ 2026-10-17
 

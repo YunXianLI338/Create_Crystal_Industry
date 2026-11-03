@@ -122,6 +122,9 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
     /** 吹出模式下的发射冷却：每次发射后按转速重置 */
     private int ejectCooldown;
 
+    /** 吸气时从正前方容器直取的冷却：与吹出侧共用同一套"间隔 = max(2, 100/转速)"的节奏 */
+    private int suckCooldown;
+
     // ===== 吸入幻影（纯视觉，不影响真实库存逻辑） =====
 
     /** 服务端：待同步给客户端的吸入事件 */
@@ -311,7 +314,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 值框"数量"滑块是否显示（两端都会调用：客户端画标签、服务端判 {@code acceptsValueSettings}）。
      * <p>
      * 数量配置只服务两处 —— 吹出模式的筛选条件（{@link #ejectItems()}）、
-     * 以及吸气时从正前方容器直抽的每次上限（{@link #collectItemsFromContainer()}）。
+     * 以及吸气时从正前方容器直抽的取货批量（{@link #collectItemsFromContainer()}）：
+     * "≤" 是每次上限，"=" 是凑够一整批才吸。
      * 吹出模式恒显示；吸气模式仅当正前方真有容器时才显示，
      * 敞开吸气（无容器）时该配置永远读不到，隐藏滑块以免误导玩家。
      */
@@ -841,8 +845,16 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 吸入模式：识别正前方（FACING 方向）的容器，按过滤直接把其中物品吸进自身库存，
      * 不产生掉落物实体。与吹出模式"面前容器直送"对称。
      * 仅在"有动力"时由 tick 调用（被动模式不生效）。
-     * 每次吸取（每 tick）按"吹出个数"配置限制总吸取数量；数量设为 0（anyAmount）时不限。
-     * 只走物品过滤（canSuck）；数量精确/小于等于模式只影响吹出，不影响吸取上限。
+     * <p>
+     * 数量档跟吹出侧同一套口径（取货走智能泄压舱口用的同一个 {@link ItemHelper#extract}）：
+     * <ul>
+     *   <li>"≤"（{@code filtering.upTo}）：每次最多吸 N 个，容器里有多少吸多少；</li>
+     *   <li>"="：容器里凑够一整批 N 个才吸，一次正好吸 N 个（凑不满就一个都不吸）。</li>
+     * </ul>
+     * 数量未显示或设为"任意"（anyAmount）时不限总量，能放多少吸多少。
+     * <p>
+     * 节奏跟吹出侧同一套（{@link #transferInterval()}）：每次搬完按"间隔 = max(2, round(100 / 转速))"
+     * 上锁，转速越快越密——否则容器直取是每 tick 一遍、固定 20 批/秒，转速高低看不出来。
      */
     private void collectItemsFromContainer() {
         // 正前方没有容器就直接返回（与数量滑块显隐同一口径，见 getFrontContainer）
@@ -850,8 +862,22 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         if (source == null)
             return;
 
+        // 取货节奏与吹出侧同款：间隔 = max(2, round(100 / 转速)) tick。
+        // 以前这里是每 tick 都跑一遍，等于无论转速高低都是 20 批/秒，容器直取完全不看转速。
+        if (suckCooldown > 0) {
+            suckCooldown--;
+            return;
+        }
+        int interval = transferInterval();
+
         // 每次吸取（本次 tick）的总额度：-1 = 不限
         int amountLimit = getEjectAmountCap();
+        // "=" 档：凑够一整批才吸，与下面"能吸多少吸多少"是两套走法
+        if (amountLimit > 0 && isExactAmountMode()) {
+            if (collectFullBatchFromContainer(source, amountLimit))
+                suckCooldown = interval;
+            return;
+        }
         int extractedThisTick = 0;
         // 有没有真的把物品从容器搬进自身库存（成就用；见方法末尾）
         boolean transferred = false;
@@ -891,10 +917,90 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         if (transferred && level instanceof ServerLevel serverLevel) {
             YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
         }
+        // 真的搬过东西才重新上弦：容器里没得吸时就照旧每 tick 看一眼，
+        // 与吹出侧"没东西可吹就不走间隔"是同一手感
+        if (transferred)
+            suckCooldown = interval;
     }
 
     /**
-     * "吹出个数"配置作为容器吸取的每次数量上限：
+     * "=" 档：容器里凑够一整批才吸，一次正好吸一批（与智能泄压舱口"凑够一整批才吐"同一套）。
+     * <p>
+     * 取货交给 Create 的 {@link ItemHelper#extract}（溜槽 / 智能溜槽 / 泄压舱口都用它）：
+     * {@code EXACTLY} 模式凑不满一整批就一个不取、返回空，于是外层循环换下一种物品再试；
+     * 同种同组件分散在几格里的堆叠会被它合并着凑，凑出来的一批也不超一组。
+     * <p>
+     * 自身库存放不下一整批时也先不动 —— 取进来再把塞不下的退回去，只会每 tick 空转，
+     * 所以先用 {@link #getMaxInsertable} 试插一遍，放不下就等它腾地方。
+     *
+     * @return 真的往自身库存搬进了一批物品就返回 {@code true}（调用方据此上搬运冷却）
+     */
+    private boolean collectFullBatchFromContainer(IItemHandler source, int batch) {
+        for (int slot = 0; slot < source.getSlots(); slot++) {
+            ItemStack candidate = source.getStackInSlot(slot);
+            if (candidate.isEmpty() || !canSuck(candidate))
+                continue;
+            // 自身库存放不下一整批就先不动：按"整批数量"试插一遍。
+            // 注意不能拿 candidate 本身去试 —— 一批可以跨容器里的好几格凑出来，
+            // 单格数量往往小于整批，用它试会把能凑的也挡掉。
+            if (getMaxInsertable(candidate.copyWithCount(batch)) < batch)
+                continue;
+
+            ItemStack extracted = ItemHelper.extract(source,
+                    stack -> canSuck(stack) && ItemStack.isSameItemSameComponents(stack, candidate),
+                    ItemHelper.ExtractionCountMode.EXACTLY, batch, false);
+            if (extracted.isEmpty())
+                continue;   // 这一样凑不满一批，换下一种物品再试
+
+            ItemStack remainder = insertAll(extracted);
+            if (!remainder.isEmpty()) {
+                // 理论不会发生（已按"整批放得下"筛过），保险起见退回源容器
+                source.insertItem(slot, remainder, false);
+            }
+            setChanged();
+
+            // 与容器直接交换成功：全程没有东西掉进世界里
+            if (extracted.getCount() > remainder.getCount() && level instanceof ServerLevel serverLevel) {
+                YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
+            }
+            return true;   // 一批一 tick
+        }
+        return false;
+    }
+
+    /**
+     * 搬运节奏（tick）：间隔 = max(2, round(100 / 转速))，转速越快越密。
+     * <p>
+     * 吹出侧原本就是这套算法，智能泄压舱口的 {@code ventInterval} 也是照抄它
+     * （那边注释写的正是"与动力吸尘器吹出同款"）。容器直取以前没用上它，
+     * 于是吸货速度跟转速无关，这里统一成同一个口径。
+     * <p>
+     * 无转速时返回下限 2：两个方向本来都只在有动力时才搬东西，走到这里只可能是
+     * 应力过载那类 {@code getSpeed()} 归零的边缘情况，给个下限免得除零。
+     */
+    private int transferInterval() {
+        float speed = Math.abs(getSpeed());
+        if (speed <= 0)
+            return 2;
+        return Math.max(2, Math.round(100f / speed));
+    }
+
+    /**
+     * 数量档是不是"="（严格档）。数量配置的两处用法（吹出筛选、吸气取货）共用这一口径：
+     * 只有数量可见、且不是"任意数量"时才谈得上档位，否则一律按"不限"处理。
+     */
+    private boolean isExactAmountMode() {
+        if (filtering == null)
+            return false;
+        if (!filtering.isCountVisible())
+            return false;
+        if (filtering.anyAmount())
+            return false;
+        return !filtering.upTo;
+    }
+
+    /**
+     * 数量配置的数值：吸气时 "≤" 档是每次上限、"=" 档是整批的批量，吹出时是整组吹出的门槛。
      * 数量未显示或设为 0（anyAmount）时返回 -1 = 不限。
      */
     private int getEjectAmountCap() {
@@ -1038,12 +1144,11 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         if (slotToEject == -1)
             return; // 没有可吹出的物品
 
-        float speed = Math.abs(getSpeed());
-        if (speed <= 0)
+        if (Math.abs(getSpeed()) <= 0)
             return; // 无转速不喷射
 
-        // 发射间隔（tick）：转速越快间隔越短；下限 2 tick，避免过密
-        int interval = Math.max(2, (int) Math.round(100f / speed));
+        // 发射间隔（tick）：转速越快间隔越短；下限 2 tick，避免过密（与吸气侧同一套）
+        int interval = transferInterval();
         if (ejectCooldown > 0) {
             ejectCooldown--;
             return;
@@ -1055,7 +1160,7 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         boolean countVisible = filtering != null && filtering.isCountVisible();
         boolean anyAmount = countVisible && filtering.anyAmount();
         int amount = countVisible && !anyAmount ? filtering.getAmount() : 64;
-        boolean exactly = countVisible && !anyAmount && !filtering.upTo;
+        boolean exactly = isExactAmountMode();
 
         if (exactly) {
             if (stackCount != amount)

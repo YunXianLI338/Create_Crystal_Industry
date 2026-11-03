@@ -13,7 +13,8 @@
         "DepotBehaviourMixin",
         "LightningBoltMixin",
         "BasinOperatingBlockEntityMixin",
-        "BlazeBurnerBlockEntityMixin"
+        "BlazeBurnerBlockEntityMixin",
+        "BeltDeployerCallbacksMixin"
     ],
     "client": [
         "LevelChunkMixin",

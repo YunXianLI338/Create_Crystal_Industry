@@ -39,8 +39,6 @@ public class MechanicalCleanerScreen extends AbstractSimiContainerScreen<Mechani
     private static final ResourceLocation CONTAINER_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(Yunxian.MODID,
                     "textures/gui/container/mechanical_cleaner.png");
-    private static final ResourceLocation CREATE_INVENTORY_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("create", "textures/gui/player_inventory.png");
 
     // ==================== GUI 总体尺寸 ====================
 
@@ -56,8 +54,7 @@ public class MechanicalCleanerScreen extends AbstractSimiContainerScreen<Mechani
 
     // ==================== 玩家物品栏面板 ====================
 
-    public static final int INVENTORY_TEXTURE_WIDTH = 176;
-    public static final int INVENTORY_TEXTURE_HEIGHT = 108;
+    /** 物品栏面板（Create 的 player_inventory.png，176×108）左上角在界面里的位置 */
     public static final int PLAYER_PANEL_Y = 115;
     public static final int INVENTORY_TEXTURE_X = 25;
 
@@ -192,10 +189,11 @@ public class MechanicalCleanerScreen extends AbstractSimiContainerScreen<Mechani
         int containerPanelY = guiTop + CONTAINER_PANEL_Y_OFFSET;
         guiGraphics.blit(CONTAINER_TEXTURE, guiLeft, containerPanelY, 0, 0, GUI_WIDTH, CONTAINER_TEXTURE_HEIGHT);
 
-        int inventoryPanelX = guiLeft + INVENTORY_TEXTURE_X;
-        int inventoryPanelY = guiTop + PLAYER_PANEL_Y;
-        guiGraphics.blit(CREATE_INVENTORY_TEXTURE, inventoryPanelX, inventoryPanelY,
-                0, 0, INVENTORY_TEXTURE_WIDTH, INVENTORY_TEXTURE_HEIGHT);
+        // 玩家物品栏：整块交给 Create 的 renderPlayerInventory —— 它把 player_inventory.png
+        // 和面板左上角那行“物品栏”标题一起画出来（标题在面板内 (8, 6)，颜色 0x404040）。
+        // 基类 AbstractSimiContainerScreen 的 renderLabels 是空的（Create 有意屏蔽掉原版
+        // 那行位置不对的标题），所以标题必须走这里，不能指望 super 帮我们补。
+        renderPlayerInventory(guiGraphics, guiLeft + INVENTORY_TEXTURE_X, guiTop + PLAYER_PANEL_Y);
 
         // 在背景之上渲染吸尘器 3D 方块模型（右侧）
         renderMechanicalCleanerModel(guiGraphics);
@@ -228,6 +226,11 @@ public class MechanicalCleanerScreen extends AbstractSimiContainerScreen<Mechani
         return ImmutableList.of(new Rect2i(x, y, MODEL_AREA_HALF_SIZE * 2, MODEL_AREA_HALF_SIZE * 2));
     }
 
+    /**
+     * 只画界面自己的标题（面板顶部居中那行）。
+     * 玩家物品栏那行「物品栏」不在这里画 —— 它跟着物品栏面板一起由
+     * {@link #renderBg} 里的 {@code renderPlayerInventory} 出，位置与 Create 各台机器一致。
+     */
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         guiGraphics.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, 0x404040, false);

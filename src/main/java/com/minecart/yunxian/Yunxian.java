@@ -134,7 +134,7 @@ public class Yunxian {
             // 成就：母岩每长出一级都会回调一次，用来判定「被催生出来的」那些时刻
             BuddingGrowthEngine.setGrowthListener(YunxianAdvancements::onBuddingGrown);
             BlockStressValues.IMPACTS.register(ModBlocks.SMART_DRILL.get(), () -> 8.0);
-            BlockStressValues.IMPACTS.register(ModBlocks.MECHANICAL_ACCELERATOR.get(), () -> 32.0);
+            BlockStressValues.IMPACTS.register(ModBlocks.MECHANICAL_ACCELERATOR.get(), () -> 16.0);
             // 显示链接器的数据源要等方块注册完才能挂上去（见 ModDisplaySources 的类注释）
             ModDisplaySources.associateBlocks();
             BlockStressValues.IMPACTS.register(ModBlocks.MECHANICAL_CLEANER.get(), () -> 4.0);

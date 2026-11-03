@@ -138,6 +138,12 @@ public class MechanicalCleanerBlock extends DirectionalKineticBlock
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                               Player player, InteractionHand hand, BlockHitResult hitResult) {
+        // FACING 的背面是传动杆接入面（见 hasShaftTowards）：这一面不提供界面，右键原样放行。
+        // 否则正对着传动杆右键也会把界面顶出来，挡住这一侧本该给动力元件的交互。
+        if (hitResult.getDirection() == state.getValue(FACING).getOpposite()) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+
         if (level.isClientSide) {
             return ItemInteractionResult.SUCCESS;
         }

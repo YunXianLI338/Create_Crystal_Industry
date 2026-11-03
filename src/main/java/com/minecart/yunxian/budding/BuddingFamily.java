@@ -53,7 +53,28 @@ public record BuddingFamily(
         /** 生长特点 */
         Growth growth,
         /** 外观与注册特点 */
-        Appearance appearance) {
+        Appearance appearance,
+        /**
+         * 母岩、三档芽与晶簇的<b>物品</b>是否耐火：true 时它们的 {@code BlockItem} 带
+         * {@code minecraft:fire_resistant} 组件，掉进熔岩与火里不会被烧掉，与原版下界合金物品同一档
+         * （走原版 {@code Item.Properties#fireResistant()}，判定在 {@code ItemEntity#fireImmune()}）。
+         * <p>
+         * 只管物品形态——方块本身原版就不会被熔岩毁掉。目前只有远古残骸家族为 true：它的晶簇掉
+         * 下界合金碎片，整条就是下界合金那条线；其余母岩保持原版物品的表现。
+         */
+        boolean fireResistant) {
+
+    /**
+     * 不耐火的家族（默认）：除了远古残骸之外的母岩全是这种。
+     * <p>
+     * 留着这个构造器是为了别让「耐火」这一个开关把十处家族声明都撑长一行；要耐火的家族
+     * （目前只有远古残骸）在声明处显式写 {@code true}，一眼能看出它和别的家族不同。
+     */
+    public BuddingFamily(String id, BuddingModel buddingModel, ToolTier toolTier, boolean generateInWorld,
+                         @Nullable WorldGen worldGen, boolean ae2Gated, Supplier<? extends ItemLike> buddingDrop,
+                         Growth growth, Appearance appearance) {
+        this(id, buddingModel, toolTier, generateInWorld, worldGen, ae2Gated, buddingDrop, growth, appearance, false);
+    }
 
     /** 母岩方块 id：&lt;id&gt;_budding */
     public String buddingId() {

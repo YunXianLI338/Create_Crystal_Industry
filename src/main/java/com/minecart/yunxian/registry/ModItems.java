@@ -82,6 +82,7 @@ public final class ModItems {
      * 于是烧一瓶还你一个空瓶。
      * <p>
      * 正途则是拿去加工：机械手蘸岩浆膏一压就成可燃冰圣代（{@code create:deploying}）。
+     * 加工这一侧刻意<b>不</b>还瓶——机械手只交出圣代，见 {@code BeltDeployerCallbacksMixin}。
      */
     public static final DeferredItem<FlammableIceSlurryBottleItem> FLAMMABLE_ICE_SLURRY_BOTTLE =
             ITEMS.register("flammable_ice_slurry_bottle",
