@@ -32,6 +32,7 @@ section at the top.
 - The Mechanical Cleaner screen now shows the "Inventory" label above the player's inventory.
 - The Mechanical Cleaner's "=" mode no longer behaves the same as "≤" when sucking from a container; it now pulls only once a full batch is available.
 - The Mechanical Cleaner's direct container transfer now runs at a cadence set by its rotation speed instead of ignoring it.
+- Looking at a stock ticker through a Tunable Portable Ticker from beyond the simulation distance no longer puts everything into "Unsorted" when the categories are built from Resonance Filters.
 
 ## 1.0.9 · 2026-10-18 ~ 2026-10-29
 
