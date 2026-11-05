@@ -40,7 +40,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
@@ -217,15 +217,18 @@ public class ModRenderers {
             GenericTooltipModifier.register(ModBlocks.FLAMMABLE_SUNDAE.get().asItem(),
                     "item.create_crystal_industry.flammable_sundae.tooltip.summary");
 
-            // 动力催生器：机械动力自家应力元件的物品提示（“应力影响：||| 16.0x RPM”，
-            // 戴工程师护目镜时显示数值，不戴时显示“高/中/低”的进度条）。
+            // 动力元件（吃了应力的方块）：机械动力自家应力元件的物品提示
+            // （“应力影响：||| 16.0x RPM”，戴工程师护目镜时显示数值，不戴时显示“高/中/低”的进度条）。
             // 直接挂 Create 的 KineticStats，不另写一套排版：它在 Create.java 的
             // tooltipModifierFactory 里只经 CreateRegistrate 发给 Create 自己的物品，
             // 我们这套 DeferredRegister 注册的方块物品必须手动补一次，否则悬停时没有这几行
             // （方块实体那侧的护目镜面板走 addToGoggleTooltip，与这条物品提示互不相干）。
-            Item acceleratorItem = ModBlocks.MECHANICAL_ACCELERATOR.get().asItem();
-            TooltipModifier.REGISTRY.register(acceleratorItem,
-                    new KineticStats(ModBlocks.MECHANICAL_ACCELERATOR.get()));
+            for (Block kinetic : new Block[] {
+                    ModBlocks.SMART_DRILL.get(),
+                    ModBlocks.MECHANICAL_ACCELERATOR.get(),
+                    ModBlocks.MECHANICAL_CLEANER.get() }) {
+                TooltipModifier.REGISTRY.register(kinetic.asItem(), new KineticStats(kinetic));
+            }
             // ★ 软依赖门控：客户端 + Curios 已加载才注册首饰栏渲染器
             if (ModList.get().isLoaded("curios")) {
                 CuriosClientIntegration.registerRenderers();

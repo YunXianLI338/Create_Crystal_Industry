@@ -50,7 +50,8 @@ import java.util.List;
  * </ul>
  * <p>
  * <b>分散网（喷嘴）。</b>喷嘴自己不是风源，它把背后那台机器的气流铺成<b>以喷嘴为中心的立方体风场</b>
- * （边长半径 = 背后那台风源的气流长度，见 {@code NozzleBlockEntity.calcRange}）。所以补了一条独立的
+ * （边长 = 背后那台风源的气流长度、半边长是它的一半，见 {@code NozzleBlockEntity.calcRange} 与
+ * {@code lazyTick} 里的 {@code inflate(range / 2f)}）。所以补了一条独立的
  * 找人路径：以本格为心在附近找喷嘴，顺着喷嘴朝向把它背后那台风源点出来，再看场盖不盖得住本格
  * （{@link #reachThrough}）。风向与转速仍取那台风源的 {@code AirCurrent}——场是绕它的轴线铺开的，
  * 吹/吸、转速快慢都跟它走。
@@ -85,11 +86,13 @@ public class PressureReliefHatchBlockEntity extends SmartBlockEntity {
     private static final int FALLBACK_INTERVAL = 10;
 
     /**
-     * 喷嘴（分散网）风场的边长半径：<b>20</b> 格，与 Create 鼓风机的最大推送/抽吸距离同档
+     * 离轴找喷嘴时的搜索半径：<b>20</b> 格，与 Create 鼓风机的最大推送/抽吸距离同档
      * （{@code AllConfigs.server().kinetics.fanPushDistance} / {@code fanPullDistance} 默认都是 20）。
      * <p>
-     * 取满 20 是为了<b>风场最边缘也照样吹得开舱口</b>：喷嘴那颗场的边长就是背后风源的
-     * {@code getMaxDistance()}，所以只有搜索半径不小于它，才谈得上"场内处处有效"。
+     * 这里搜的是"喷嘴可能坐在哪"，不是场本身：喷嘴那颗场的<b>边长</b>是背后风源的
+     * {@code getMaxDistance()}，往各方向只铺出一半（见 {@link #probeNozzle}），默认满速时半边长 10 格。
+     * 取 20 是留了余量（风源配置调大时半边长也跟着大），扫出来的每一格都还要过
+     * {@link #probeNozzle} 的半边长判定，多搜不会放宽结果。
      * <p>
      * 20 格全扫一次是 41³ ≈ 6.9 万格，看着吓人，但这条重扫路径<b>只在两种时候走</b>：
      * 舱口还没记住风源，或者记住的那股风变了（风源被拆、停机、转向、喷嘴没了）。
@@ -380,9 +383,11 @@ public class PressureReliefHatchBlockEntity extends SmartBlockEntity {
         if (source.getAirCurrent() != current || source.isSourceRemoved())
             return null;
 
-        // 场会随转速伸缩，所以每次复查都拿"现在"的边长重量一遍，不能只看记下来的那次
-        float radius = Math.max(0, source.getMaxDistance());
-        if (radius < 0.25f || span > radius)
+        // 场会随转速伸缩，所以每次复查都拿"现在"的边长重量一遍，不能只看记下来的那次。
+        // 比的是半边长：Create 把 getMaxDistance() 当立方体场的边长（inflate(range / 2f)），
+        // 场往各方向只铺出一半。
+        float fieldLength = Math.max(0, source.getMaxDistance());
+        if (fieldLength < 0.25f || span > fieldLength * 0.5F)
             return null;
 
         return remember(current, anchorPos, anchorDirection, span);
@@ -414,17 +419,18 @@ public class PressureReliefHatchBlockEntity extends SmartBlockEntity {
      * 试一格"喷嘴铺开的场"——假设这一格里坐着喷嘴、它背对风源那一侧（{@code awayFromFan}
      * 的反方向）的那格是风源，问这颗场盖不盖得住本舱口。
      * <p>
-     * <b>场的形状是立方体，不是球。</b>边长半径 = 背后那台风源的 {@code getMaxDistance()}
-     * （{@code NozzleBlockEntity.calcRange()} 返回的就是它），判定用<b>各轴差值的最大值</b>
-     * 与边长比大小。这一口径与 Create 自己挑实体的写法一致（{@code NozzleBlockEntity.lazyTick}
-     * 用 {@code new AABB(center, center).inflate(range / 2f)} 取实体）——立方体的角比球
-     * 更远，所以"换个形状"这件事对舱口是放宽，最边缘的角上也能被吹到。
+     * <b>场的形状是立方体，不是球。</b>边长 = 背后那台风源的 {@code getMaxDistance()}
+     * （{@code NozzleBlockEntity.calcRange()} 返回的就是它），<b>半边长是它的一半</b>；
+     * 判定用<b>各轴差值的最大值</b>与半边长比大小。这一口径与 Create 挑实体的写法逐字一致
+     * （{@code NozzleBlockEntity.lazyTick} 用 {@code new AABB(center, center).inflate(range / 2f)}），
+     * 吸入时撒粒子也是 {@code offsetRandomly(center, random, range / 2)}——场从喷嘴往各方向
+     * 只铺出 range/2 格，拿 range 当半边长会让舱口在网罩外面老远就假装有风。
      * <p>
      * 顺带一提，喷嘴推向实体的那段用的是欧氏距离（{@code distance > range} 就撒手），
-     * 所以官方在立方体角上其实不推实体。本类不跟这一条，理由同上：舱口是"感应器"，
-     * 场覆盖到就该有反应。
+     * 所以官方在立方体角上其实不推实体。本类不跟这一条：舱口是"感应器"，
+     * 场覆盖到就该有反应，而这里的"覆盖"已经按半边长量过。
      * <p>
-     * 半径用的是风源自己的 {@code getMaxDistance()}（与 {@code NozzleBlockEntity.calcRange()}
+     * 半边长随风源自己的 {@code getMaxDistance()} 变化（与 {@code NozzleBlockEntity.calcRange()}
      * 逐字一致），所以转速越低场越小，跟看到的喷嘴动画对得上。
      * <p>
      * <b>"放不放"照旧按风场轴线判</b>（{@code opens}），这里只解决"在不在场里"。
@@ -460,21 +466,23 @@ public class PressureReliefHatchBlockEntity extends SmartBlockEntity {
         if (current == null || source.isSourceRemoved())
             return null;
 
-        // 半径取的是<b>转速量</b> {@code source.getMaxDistance()}，与 {@code NozzleBlockEntity.calcRange()}
-        // 逐字一致（满速 20 格、32 转速 10.5 格）。
+        // 场长取的是<b>转速量</b> {@code source.getMaxDistance()}，与 {@code NozzleBlockEntity.calcRange()}
+        // 逐字一致（满速 20 格、32 转速 10.5 格）。Create 把它当立方体场的<b>边长</b>
+        // （{@code NozzleBlockEntity.lazyTick} 挑实体用 {@code inflate(range / 2f)}），
+        // 所以场往各方向只铺出它的一半，这里比的也是半边长。
         //
         // 这里<b>不能</b>改用 {@code current.maxDistance}：那是被 {@code AirCurrent.getFlowLimit}
         // 按沿途方块截短过的长度，而喷嘴自己那颗方块的碰撞箱就会把风扇气流压到 {@code 1/32}
         // （实测 direction=south、maxDistance=0.03125）。于是"场明明在、读出来却近乎 0"，
         // 侧面舱口会被误判成没风。Create 自己也用 0.25 当塌场门槛（{@code AirCurrent.java:213}），
         // 但那说的是"轴线上被挡住多远"，不是喷嘴铺开的场有多大。
-        float radius = Math.max(0, source.getMaxDistance());
-        if (radius < 0.25f)
+        float fieldLength = Math.max(0, source.getMaxDistance());
+        if (fieldLength < 0.25f)
             return null;
 
         // 场的形状是立方体：比各轴差值的最大值，而不是欧氏距离
         float span = cubeDistance(VecHelper.getCenterOf(worldPosition), VecHelper.getCenterOf(nozzlePos));
-        if (span > radius)
+        if (span > fieldLength * 0.5F)
             return null;
 
         // "放不放"照旧按风场轴线判（见 {@link #opens}）——这里只解决"在不在场里"。

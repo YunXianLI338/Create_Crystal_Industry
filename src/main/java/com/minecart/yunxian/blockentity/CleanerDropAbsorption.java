@@ -152,10 +152,11 @@ public final class CleanerDropAbsorption {
 
     /**
      * 喷嘴（分散网）场里的落点：问 {@link NozzleFieldIndex} 有哪些机器前方挂着喷嘴，
-     * 逐个按"场是以喷嘴为中心、最长 {@link MechanicalCleanerBlockEntity#SUCK_RANGE_MAX} 格的立方体"
-     * 粗筛，命中再交给机器自己复判。
+     * 逐个按"落点到喷嘴的立方体距离不超过 {@link MechanicalCleanerBlockEntity#SUCK_RANGE_MAX} 格"
+     * 粗筛（这里只是上界，真正的半边长由机器自己按转速算），命中再交给机器复判。
      * <p>
-     * 为什么按喷嘴而不是按机器算距离：场的中心是喷嘴，机器的气流长度就是从喷嘴往外的半径，
+     * 为什么按喷嘴而不是按机器算距离：场的中心是喷嘴，机器的气流长度是那颗立方体场的
+     * <b>边长</b>（往外铺的距离只有它的一半，见机器那边的 {@code nozzleFieldHalfExtent}），
      * 所以"落点到喷嘴的立方体距离 ≤ 上限"才是不漏的口径；按机器算会差一格。
      * <p>
      * 粗筛只用整数比较，真正的边界（视线、过滤、容量）留给 {@code tryAbsorbDrop}——这里多放进来一格

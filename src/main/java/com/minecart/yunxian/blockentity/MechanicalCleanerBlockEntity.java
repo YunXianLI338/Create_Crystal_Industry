@@ -203,9 +203,9 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 转速为 0（无动力 / 红石锁 / 满仓停摆）时一律返回 0：这台机器此刻不工作，就没有任何风场可言。
      * <b>这一条不能省</b>——{@link IAirCurrentSource} 的默认量是
      * {@code Mth.lerp(distanceFactor, 3, max)}，距离因子为 0 时仍会留下 3 格；轴线风场那边
-     * {@code AirCurrent.rebuild()} 自己会把 {@code maxDistance} 归零，可喷嘴场是拿<b>本方法</b>当半径的
-     * （见 {@link #getNozzleCoverage()}），不归零就会在满仓停摆后仍留一个半径 3 的立方体风场，
-     * 掉落物接管（{@link #tryAbsorbDrop}）、泄压舱口复查都会把这份"残余风场"当真。
+     * {@code AirCurrent.rebuild()} 自己会把 {@code maxDistance} 归零，可喷嘴场是拿<b>本方法</b>当立方体场的边长
+     * （{@link #nozzleFieldHalfExtent()} 再取一半，见 {@link #getNozzleCoverage()}），不归零就会在满仓停摆后
+     * 仍留一个边长 3 的立方体风场，掉落物接管（{@link #tryAbsorbDrop}）、泄压舱口复查都会把这份"残余风场"当真。
      */
     @Override
     public float getMaxDistance() {
@@ -315,7 +315,7 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * <p>
      * 数量配置只服务两处 —— 吹出模式的筛选条件（{@link #ejectItems()}）、
      * 以及吸气时从正前方容器直抽的取货批量（{@link #collectItemsFromContainer()}）：
-     * "≤" 是每次上限，"=" 是凑够一整批才吸。
+     * "≤" 是每次上限，"=" 是从单格整取的一整批。
      * 吹出模式恒显示；吸气模式仅当正前方真有容器时才显示，
      * 敞开吸气（无容器）时该配置永远读不到，隐藏滑块以免误导玩家。
      */
@@ -649,7 +649,7 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * ——它是 {@code LivingEntity} 而不是 ItemEntity，所以以前那些只扫 ItemEntity 的循环
      * 根本看不见包裹，包裹就永远吸不进来（见 {@link #suckPackage}）。
      *
-     * @param extra 额外的逐实体条件（喷嘴那条要用：超出半径、没有视线的都不吸），null = 全收
+     * @param extra 额外的逐实体条件（喷嘴那条要用：超出半边长、没有视线的都不吸），null = 全收
      */
     private void suckAllIn(AABB area, Predicate<Entity> extra) {
         if (level == null)
@@ -717,14 +717,18 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
 
     /**
      * 分散网（喷嘴）兼容：吸尘器正前方挂有喷嘴时，
-     * 喷嘴把气流分散成以自身为中心的<b>立方体</b>风场（边长半径 = 吸尘器气流长度，
-     * 与 {@code NozzleBlockEntity.calcRange()} 同源）。吸入模式下，该场内、且有视线的掉落物直接收入容器。
+     * 喷嘴把气流分散成以自身为中心的<b>立方体</b>风场：<b>边长</b> = 吸尘器气流长度
+     * {@link #getMaxDistance()}（与 {@code NozzleBlockEntity.calcRange()} 同源），
+     * <b>半边长是它的一半</b>。吸入模式下，该场内、且有视线的掉落物直接收入容器。
      * <p>
-     * 形状用立方体而不是球：Create 自己挑实体时取的是
-     * {@code new AABB(center, center).inflate(range / 2f)}（{@code NozzleBlockEntity.lazyTick}），
-     * 而泄压舱口判"我这个舱口在不在场里"用的也是各轴差值的最大值
-     * （{@code PressureReliefHatchBlockEntity.cubeDistance}）。三处口径必须一致，
-     * 否则又会出现"舱口认为有风、吸尘器认为收不到"的裂缝。
+     * 尺寸照抄 Create：{@code NozzleBlockEntity.lazyTick} 挑实体用
+     * {@code new AABB(center, center).inflate(range / 2f)}，吸入时撒粒子也是
+     * {@code VecHelper.offsetRandomly(center, random, range / 2)}——<b>场从喷嘴往各方向只铺出 range/2 格</b>。
+     * 把 range 直接当半边长会胖一倍（每轴 2×、体积 8×），那正是"网罩外面老远的东西也被吸走"的来源。
+     * <p>
+     * 形状用立方体而不是球：{@link #withinCube} 比各轴差值的最大值，与泄压舱口判
+     * "我这个舱口在不在场里"的 {@code PressureReliefHatchBlockEntity.cubeDistance} 是同一口径，
+     * 两处都用半边长，才不会出现"舱口认为有风、吸尘器认为收不到"的裂缝。
      */
     private void collectItemsFromNozzle() {
         AABB coverage = getNozzleCoverage();
@@ -733,13 +737,13 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
 
         BlockPos nozzlePos = getNozzlePos();
         Vec3 center = VecHelper.getCenterOf(nozzlePos);
-        float radius = getMaxDistance();
+        float radius = nozzleFieldHalfExtent();
 
         // 顺手登记给"掉落物直接入库存"反查（见 CleanerDropAbsorption / NozzleFieldIndex）：
         // 这里本来就要算一遍覆盖，登记不额外多一次查询
         NozzleFieldIndex.add(level, worldPosition, nozzlePos);
 
-        // 与喷嘴自身行为一致：超出半径或无视线的不吸（掉落物与包裹同一套条件）
+        // 与喷嘴自身行为一致：超出半边长或无视线的不吸（掉落物与包裹同一套条件）
         suckAllIn(coverage, entity ->
                 withinCube(entity.position(), center, radius)
                         && lineOfSightToNozzle(entity.position(), CollisionContext.of(entity), nozzlePos));
@@ -756,8 +760,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 判的是"有没有场"（在吸入 + 有动力 + 正前方有喷嘴），不判"这一 tick 收不收得下"：
      * 满仓停摆、红石锁、过滤不过都只是暂时收不下，下一 tick 可能就好了，
      * 让登记表跟着这些状态抖动没有意义——那些条件 {@code tryAbsorbDrop} 收的时候自己会判。
-     * 所以这里问 {@link #hasNozzleField()} 而不是 {@link #getNozzleCoverage()}：后者的半径是
-     * {@link #getMaxDistance()}，转速归零时会变成 0，拿它判就会跟着停摆来回增删。
+     * 所以这里问 {@link #hasNozzleField()} 而不是 {@link #getNozzleCoverage()}：后者的半边长是
+     * {@link #getMaxDistance()} 的一半，转速归零时会变成 0，拿它判就会跟着停摆来回增删。
      */
     private void syncNozzleFieldIndex() {
         if (hasNozzleField()) {
@@ -781,12 +785,25 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
 
     /**
      * 两个点之间的"立方体距离"——各轴差值的最大值，即在这颗立方体风场里比的是最远的那条轴。
-     * 与 {@code NozzleBlockEntity} 的 {@code inflate(range)} 外接盒、以及泄压舱口的
-     * {@code cubeDistance} 逐字一致。
+     * 与 {@code NozzleBlockEntity} 的 {@code inflate(range / 2f)} 外接盒、以及泄压舱口的
+     * {@code cubeDistance} 逐字一致——比的都是<b>半边长</b>，不是风场长度。
      */
     private static boolean withinCube(Vec3 from, Vec3 center, float radius) {
         return Math.max(Math.abs(from.x - center.x),
                 Math.max(Math.abs(from.y - center.y), Math.abs(from.z - center.z))) <= radius;
+    }
+
+    /**
+     * 分散网（喷嘴）场的半边长：Create 把风源的气流长度（{@link #getMaxDistance()}）
+     * 当作那颗立方体场的<b>边长</b>（{@code NozzleBlockEntity.lazyTick} 挑实体用
+     * {@code inflate(range / 2f)}，吸风时撒粒子用 {@code offsetRandomly(center, random, range / 2)}），
+     * 所以场从喷嘴往各方向只铺出它的一半。
+     * <p>
+     * {@link #getNozzleCoverage()}、{@link #collectItemsFromNozzle()} 与
+     * {@link #tryAbsorbDrop} 共用这一份口径，改一处就得三处一起改。
+     */
+    private float nozzleFieldHalfExtent() {
+        return getMaxDistance() * 0.5F;
     }
 
     /** 正前方（FACING 方向）那一格：分散网挂在这里，没有喷嘴时也是"面前容器"那一格 */
@@ -796,23 +813,23 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
 
     /**
      * 分散网（喷嘴）覆盖的外接盒：正前方挂着喷嘴且气流长度 &gt; 0 时返回
-     * "以喷嘴为中心、半径 = {@link #getMaxDistance()} 的立方体"的外接 AABB，否则 {@code null}。
+     * "以喷嘴为中心、半边长 = {@link #nozzleFieldHalfExtent()} 的立方体"的外接 AABB，否则 {@code null}。
      * <p>
      * 只给"掉落物直接入库存"那条路做<b>粗筛</b>用（{@link #tryAbsorbDrop} 再自己补立方体距离与视线判定）；
      * 按 tick 收实体那条路（{@link #collectItemsFromNozzle}）直接用同一份盒。
      * <p>
-     * 半径为 0（转速为 0：无动力 / 红石锁 / 满仓停摆）时返回 {@code null}——机器停了就没有风场，
+     * 半边长随转速伸缩，归零（无动力 / 红石锁 / 满仓停摆）时返回 {@code null}——机器停了就没有风场，
      * 这一步由 {@link #getMaxDistance()} 负责。
      */
     public AABB getNozzleCoverage() {
-        float radius = getMaxDistance();
-        if (airCurrent == null || radius <= 0)
+        float halfExtent = nozzleFieldHalfExtent();
+        if (airCurrent == null || halfExtent <= 0)
             return null;
         BlockPos nozzlePos = getNozzlePos();
         if (!(level.getBlockEntity(nozzlePos) instanceof NozzleBlockEntity))
             return null;
         Vec3 center = VecHelper.getCenterOf(nozzlePos);
-        return new AABB(center, center).inflate(radius);
+        return new AABB(center, center).inflate(halfExtent);
     }
 
     /**
@@ -846,12 +863,17 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 不产生掉落物实体。与吹出模式"面前容器直送"对称。
      * 仅在"有动力"时由 tick 调用（被动模式不生效）。
      * <p>
-     * 数量档跟吹出侧同一套口径（取货走智能泄压舱口用的同一个 {@link ItemHelper#extract}）：
+     * 数量档照智能溜槽的结构来（{@code SmartChuteBlockEntity#getExtractionAmount} /
+     * {@code #getExtractionMode} 先定"一次搬多少、按哪种口径搬"，再走同一条搬运流程）：
      * <ul>
-     *   <li>"≤"（{@code filtering.upTo}）：每次最多吸 N 个，容器里有多少吸多少；</li>
-     *   <li>"="：容器里凑够一整批 N 个才吸，一次正好吸 N 个（凑不满就一个都不吸）。</li>
+     *   <li>"≤"（{@code filtering.upTo}）：一次最多搬 N 个，容器里有多少搬多少，可以跨格；</li>
+     *   <li>"="：容器里凑够 N 个才搬，且只搬正好 N 个。散在几格里的同种物品可以合起来凑
+     *       （16 + 16 取；32 + 1 只取那 32 个），零头不会被顺带吸空。</li>
      * </ul>
-     * 数量未显示或设为"任意"（anyAmount）时不限总量，能放多少吸多少。
+     * 整批的量始终卡在 N：Create 的 EXACTLY 逐格按"还差多少"截断，凑满就停手，
+     * 所以 32 + 1 这种组合只会取走 32 个，不会把零头那一格的 1 个也顺带吞掉。
+     * <p>
+     * 数量未显示或设为"任意"（anyAmount）时按"一次最多 64 个"处理（与溜槽同口径）。
      * <p>
      * 节奏跟吹出侧同一套（{@link #transferInterval()}）：每次搬完按"间隔 = max(2, round(100 / 转速))"
      * 上锁，转速越快越密——否则容器直取是每 tick 一遍、固定 20 批/秒，转速高低看不出来。
@@ -863,38 +885,80 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
             return;
 
         // 取货节奏与吹出侧同款：间隔 = max(2, round(100 / 转速)) tick。
-        // 以前这里是每 tick 都跑一遍，等于无论转速高低都是 20 批/秒，容器直取完全不看转速。
         if (suckCooldown > 0) {
             suckCooldown--;
             return;
         }
         int interval = transferInterval();
 
-        // 每次吸取（本次 tick）的总额度：-1 = 不限
-        int amountLimit = getEjectAmountCap();
-        // "=" 档：凑够一整批才吸，与下面"能吸多少吸多少"是两套走法
-        if (amountLimit > 0 && isExactAmountMode()) {
-            if (collectFullBatchFromContainer(source, amountLimit))
-                suckCooldown = interval;
+        // 一次搬多少、按哪种口径搬：与智能溜槽同一套
+        int amount = getExtractionAmount();
+        boolean moved = getExtractionMode() == ItemHelper.ExtractionCountMode.EXACTLY
+                ? collectBatchFromContainer(source, amount)
+                : collectUpToFromContainer(source, amount);
+        if (!moved)
             return;
+
+        setChanged();
+        // 与容器直接交换成功：全程没有东西掉进世界里
+        if (level instanceof ServerLevel serverLevel)
+            YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
+        // 真的搬过东西才重新上弦：容器里没得吸时就照旧每 tick 看一眼，
+        // 与吹出侧"没东西可吹就不走间隔"是同一手感
+        suckCooldown = interval;
+    }
+
+    /**
+     * "=" 档：在容器里凑够 {@code batch} 个才搬，且只搬正好这一批 —— 零头不跟着被吞。
+     * <p>
+     * 取货交给 Create 的 {@link ItemHelper#extract}（EXACTLY 口径），这样散在几格里的同种物品
+     * 可以合起来凑一批：16 + 16 能取，32 + 1 则只取那 32 个，剩下 1 个原样留在容器里。
+     * EXACTLY 在 {@code ItemHelper.java:200-201} 用 {@code min(还差多少, 该格数量)} 逐格截断，
+     * 凑满 {@code batch} 立刻停手，所以总数不会超过一批。
+     * <p>
+     * 先干跑一遍再真取（与溜槽 {@code ChuteBlockEntity#handleInput} 同款）：凑不够就整批不动，
+     * 免得取一半又退回去空转。自身库存放不下一整批时也先不动。
+     *
+     * @return 真的往自身库存搬进了一批物品就返回 {@code true}（调用方据此上搬运冷却）
+     */
+    private boolean collectBatchFromContainer(IItemHandler source, int batch) {
+        // 干跑一遍：凑不够一整批就不动（散在几格里的零头也算数）
+        ItemStack preview = ItemHelper.extract(source, this::canSuck, ItemHelper.ExtractionCountMode.EXACTLY, batch, true);
+        if (preview.isEmpty())
+            return false;
+        // 自身库存放不下一整批就先不动
+        if (getMaxInsertable(preview) < preview.getCount())
+            return false;
+
+        ItemStack extracted = ItemHelper.extract(source, this::canSuck, ItemHelper.ExtractionCountMode.EXACTLY, batch, false);
+        if (extracted.isEmpty())
+            return false;
+        // 保险：真取的量多过一批时，多出来的原样还回容器（正常不会发生，防止任何实现多抽）
+        if (extracted.getCount() > batch) {
+            ItemStack excess = extracted.copyWithCount(extracted.getCount() - batch);
+            extracted.setCount(batch);
+            giveBackToContainer(source, excess);
         }
-        int extractedThisTick = 0;
-        // 有没有真的把物品从容器搬进自身库存（成就用；见方法末尾）
-        boolean transferred = false;
+        deliverToInventory(extracted);
+        return true;
+    }
 
-        for (int slot = 0; slot < source.getSlots(); slot++) {
-            if (amountLimit >= 0 && extractedThisTick >= amountLimit)
-                break;
-
+    /**
+     * "≤" 档：一次最多搬 {@code limit} 个，容器里有多少搬多少（可跨格）。
+     * 与溜槽 {@code ExtractionCountMode.UPTO} 同口径。
+     *
+     * @return 真的搬过东西就返回 {@code true}
+     */
+    private boolean collectUpToFromContainer(IItemHandler source, int limit) {
+        boolean moved = false;
+        int budget = limit;
+        for (int slot = 0; slot < source.getSlots() && budget > 0; slot++) {
             ItemStack stackInSlot = source.getStackInSlot(slot);
-            if (stackInSlot.isEmpty())
-                continue;
-            if (!canSuck(stackInSlot))
+            if (stackInSlot.isEmpty() || !canSuck(stackInSlot))
                 continue;
 
-            // 本次可从该槽取出的数量 = min(剩余额度, 自身库存可容纳量)
-            int remainingBudget = amountLimit >= 0 ? amountLimit - extractedThisTick : Integer.MAX_VALUE;
-            int maxExtract = Math.min(getMaxInsertable(stackInSlot), remainingBudget);
+            // 本次可从该槽取出的数量 = min(槽内数量, 剩余额度, 自身库存可容纳量)
+            int maxExtract = Math.min(Math.min(stackInSlot.getCount(), budget), getMaxInsertable(stackInSlot));
             if (maxExtract <= 0)
                 continue;
 
@@ -902,70 +966,32 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
             if (extracted.isEmpty())
                 continue;
 
-            extractedThisTick += extracted.getCount();
-
-            ItemStack remainder = insertAll(extracted);
-            if (!remainder.isEmpty()) {
-                // 理论不会发生（已按可放入量取出），保险起见退回源容器
-                source.insertItem(slot, remainder, false);
-            }
-            transferred |= extracted.getCount() > remainder.getCount();
-            setChanged();
+            budget -= extracted.getCount();
+            deliverToInventory(extracted);
+            moved = true;
         }
-
-        // 与容器直接交换成功：全程没有东西掉进世界里
-        if (transferred && level instanceof ServerLevel serverLevel) {
-            YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
-        }
-        // 真的搬过东西才重新上弦：容器里没得吸时就照旧每 tick 看一眼，
-        // 与吹出侧"没东西可吹就不走间隔"是同一手感
-        if (transferred)
-            suckCooldown = interval;
+        return moved;
     }
 
-    /**
-     * "=" 档：容器里凑够一整批才吸，一次正好吸一批（与智能泄压舱口"凑够一整批才吐"同一套）。
-     * <p>
-     * 取货交给 Create 的 {@link ItemHelper#extract}（溜槽 / 智能溜槽 / 泄压舱口都用它）：
-     * {@code EXACTLY} 模式凑不满一整批就一个不取、返回空，于是外层循环换下一种物品再试；
-     * 同种同组件分散在几格里的堆叠会被它合并着凑，凑出来的一批也不超一组。
-     * <p>
-     * 自身库存放不下一整批时也先不动 —— 取进来再把塞不下的退回去，只会每 tick 空转，
-     * 所以先用 {@link #getMaxInsertable} 试插一遍，放不下就等它腾地方。
-     *
-     * @return 真的往自身库存搬进了一批物品就返回 {@code true}（调用方据此上搬运冷却）
-     */
-    private boolean collectFullBatchFromContainer(IItemHandler source, int batch) {
-        for (int slot = 0; slot < source.getSlots(); slot++) {
-            ItemStack candidate = source.getStackInSlot(slot);
-            if (candidate.isEmpty() || !canSuck(candidate))
-                continue;
-            // 自身库存放不下一整批就先不动：按"整批数量"试插一遍。
-            // 注意不能拿 candidate 本身去试 —— 一批可以跨容器里的好几格凑出来，
-            // 单格数量往往小于整批，用它试会把能凑的也挡掉。
-            if (getMaxInsertable(candidate.copyWithCount(batch)) < batch)
-                continue;
+    /** 把从容器取出的一份物品塞进自身库存；塞不下的部分退回容器，绝不凭空消失 */
+    private void deliverToInventory(ItemStack stack) {
+        ItemStack remainder = insertAll(stack);
+        if (!remainder.isEmpty())
+            giveBackToContainer(getFrontContainer(), remainder);
+    }
 
-            ItemStack extracted = ItemHelper.extract(source,
-                    stack -> canSuck(stack) && ItemStack.isSameItemSameComponents(stack, candidate),
-                    ItemHelper.ExtractionCountMode.EXACTLY, batch, false);
-            if (extracted.isEmpty())
-                continue;   // 这一样凑不满一批，换下一种物品再试
-
-            ItemStack remainder = insertAll(extracted);
-            if (!remainder.isEmpty()) {
-                // 理论不会发生（已按"整批放得下"筛过），保险起见退回源容器
-                source.insertItem(slot, remainder, false);
-            }
-            setChanged();
-
-            // 与容器直接交换成功：全程没有东西掉进世界里
-            if (extracted.getCount() > remainder.getCount() && level instanceof ServerLevel serverLevel) {
-                YunxianAdvancements.awardNear(serverLevel, worldPosition, YunxianAdvancements.MACHINE_CLEANER_SWAP);
-            }
-            return true;   // 一批一 tick
-        }
-        return false;
+    /** 把物品还回容器；容器塞不下就掉在机器正前方，而不是直接丢掉 */
+    private void giveBackToContainer(IItemHandler source, ItemStack stack) {
+        ItemStack remainder = stack;
+        if (source != null)
+            remainder = ItemHandlerHelper.insertItemStacked(source, remainder, false);
+        if (remainder.isEmpty() || level == null)
+            return;
+        Vec3 center = VecHelper.getCenterOf(worldPosition);
+        ItemEntity dropped = new ItemEntity(level, center.x, center.y + .5, center.z, remainder);
+        dropped.setDefaultPickUpDelay();
+        dropped.setDeltaMovement(Vec3.ZERO);
+        level.addFreshEntity(dropped);
     }
 
     /**
@@ -986,31 +1012,23 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
     }
 
     /**
-     * 数量档是不是"="（严格档）。数量配置的两处用法（吹出筛选、吸气取货）共用这一口径：
-     * 只有数量可见、且不是"任意数量"时才谈得上档位，否则一律按"不限"处理。
+     * 一次搬多少：数量可见且不是"任意数量"时就是面板上那个数，否则 64。
+     * 与 {@code SmartChuteBlockEntity#getExtractionAmount} 同口径。
      */
-    private boolean isExactAmountMode() {
-        if (filtering == null)
-            return false;
-        if (!filtering.isCountVisible())
-            return false;
-        if (filtering.anyAmount())
-            return false;
-        return !filtering.upTo;
+    private int getExtractionAmount() {
+        if (filtering == null || !filtering.isCountVisible() || filtering.anyAmount())
+            return 64;
+        return filtering.getAmount();
     }
 
     /**
-     * 数量配置的数值：吸气时 "≤" 档是每次上限、"=" 档是整批的批量，吹出时是整组吹出的门槛。
-     * 数量未显示或设为 0（anyAmount）时返回 -1 = 不限。
+     * 按哪种口径搬：数量可见、不是"任意数量"、且选的是"="时按"整批"，其余按"最多"。
+     * 与 {@code SmartChuteBlockEntity#getExtractionMode} 同口径，吸气与吹出共用。
      */
-    private int getEjectAmountCap() {
-        if (filtering == null)
-            return -1;
-        if (!filtering.isCountVisible())
-            return -1;
-        if (filtering.anyAmount())
-            return -1;
-        return filtering.getAmount();
+    private ItemHelper.ExtractionCountMode getExtractionMode() {
+        if (filtering == null || !filtering.isCountVisible() || filtering.anyAmount())
+            return ItemHelper.ExtractionCountMode.UPTO;
+        return filtering.upTo ? ItemHelper.ExtractionCountMode.UPTO : ItemHelper.ExtractionCountMode.EXACTLY;
     }
 
     // ==================== 含水解包 ====================
@@ -1157,10 +1175,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
 
         // ---- 数量判定（与 SmartChuteBlockEntity.getExtractionAmount/getExtractionMode 同构） ----
         int stackCount = inventory.getStackInSlot(slotToEject).getCount();
-        boolean countVisible = filtering != null && filtering.isCountVisible();
-        boolean anyAmount = countVisible && filtering.anyAmount();
-        int amount = countVisible && !anyAmount ? filtering.getAmount() : 64;
-        boolean exactly = isExactAmountMode();
+        int amount = getExtractionAmount();
+        boolean exactly = getExtractionMode() == ItemHelper.ExtractionCountMode.EXACTLY;
 
         if (exactly) {
             if (stackCount != amount)
@@ -1228,8 +1244,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * 无动力的吸尘器走不到这里（{@code getSpeed() == 0} 直接返回），所以
      * {@link #collectItemsPassive} 那条路保持原样：掉落物照常生成实体、下一 tick 再被收走。
      *
-     * @param radius 调用方已经确认的那份覆盖半径，就是 {@link #getMaxDistance()}。
-     *               传进来只为省掉重复计算，判定语义以本方法为准。
+     * @param radius 调用方已经确认的那份气流长度，就是 {@link #getMaxDistance()}（喷嘴场的边长）。
+     *               传进来只为省掉重复计算，判定语义以本方法为准；喷嘴场的半边长在这里取它的一半。
      *
      * <h4>不接管的情况（掉落物照常生成，随后由 {@link #suckItem} 按实际空间收走）</h4>
      * <ul>
@@ -1248,7 +1264,7 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         if (!inFlow) {
             AABB coverage = getNozzleCoverage();
             inFlow = coverage != null && coverage.contains(point)
-                    && withinCube(point, VecHelper.getCenterOf(getNozzlePos()), radius)
+                    && withinCube(point, VecHelper.getCenterOf(getNozzlePos()), radius * 0.5F)
                     && lineOfSightToNozzle(point, CollisionContext.empty(), getNozzlePos());
         }
         if (!inFlow)

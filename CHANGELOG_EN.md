@@ -16,8 +16,9 @@ section at the top.
 
 ### Added
 
-- The Mechanical Accelerator's item tooltip now carries a Create-style Stress Impact entry, with the exact multiplier shown while wearing Engineer's Goggles.
+- The Smart Drill, Mechanical Accelerator and Mechanical Cleaner item tooltips now carry a Create-style Stress Impact entry, with the exact multiplier shown while wearing Engineer's Goggles.
 - Both the Electric Accelerator and the Mechanical Accelerator can be quickly dismantled with a sneak right-click of a Wrench, and rotated with a normal right-click.
+- While the player's view is inside Flammable Ice Slurry, the screen is tinted by a haze of the block's average texture color, matching vanilla Powder Snow.
 
 ### Changed
 
@@ -30,9 +31,10 @@ section at the top.
 
 - A Deployer no longer hands back an extra Glass Bottle after turning a Flammable Ice Slurry Bottle into a Flammable Sundae.
 - The Mechanical Cleaner screen now shows the "Inventory" label above the player's inventory.
-- The Mechanical Cleaner's "=" mode no longer behaves the same as "≤" when sucking from a container; it now pulls only once a full batch is available.
+- The Mechanical Cleaner's "=" mode now gathers a full batch across slots when sucking from a container, but takes exactly that many items instead of swallowing partial stacks.
 - The Mechanical Cleaner's direct container transfer now runs at a cadence set by its rotation speed instead of ignoring it.
 - Looking at a stock ticker through a Tunable Portable Ticker from beyond the simulation distance no longer puts everything into "Unsorted" when the categories are built from Resonance Filters.
+- The Mechanical Cleaner's suction range and the Pressure Relief Hatch's nozzle-field check now follow the volume a Nozzle actually spreads, so drops outside the mesh are no longer pulled in.
 
 ## 1.0.9 · 2026-10-18 ~ 2026-10-29
 
