@@ -20,6 +20,7 @@ import com.minecart.yunxian.client.ModRenderers;
 import com.minecart.yunxian.compat.YunxianJeiPlugin;
 import com.minecart.yunxian.datagen.YunxianDataGen;
 import com.minecart.yunxian.registry.*;
+import com.minecart.yunxian.resonance.ResonanceRulesEvents;
 import com.minecart.yunxian.util.NightVisionWearHelper;
 import com.minecart.yunxian.util.WindKnockbackGuard;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -98,6 +99,12 @@ public class Yunxian {
         // 潜行右键换晶体：只能挂在物品层（原版潜行时会跳过方块的 useItemOn），且手持的是任意晶体方块，
         // 所以走 UseItemOnBlockEvent 这个对任何物品都生效的钩子，见该类注释
         NeoForge.EVENT_BUS.addListener(CrystalBatteryInteractions::onUseItemOnBlock);
+        // 远距离查看共振类别：离开模拟距离后客户端的 CLIENT_LINKS 是空的，判定会 fail-closed，
+        // 于是界面把所有物品都归到「未分类」。打开仓储界面时把服务端解析到的规则推下去，
+        // 界面开着时每 20 tick 补刷一次（内容没变不发包），见 ResonanceRulesEvents 的类注释
+        NeoForge.EVENT_BUS.addListener(ResonanceRulesEvents::onContainerOpen);
+        NeoForge.EVENT_BUS.addListener(ResonanceRulesEvents::onServerTick);
+        NeoForge.EVENT_BUS.addListener(ResonanceRulesEvents::onLoggedOut);
         modEventBus.addListener(Yunxian::commonSetup);
         ModRecipes.register(modEventBus);
         // ModRenderers 整个类都是客户端专用的：它的类级字段是 ModelResourceLocation / PartialModel，

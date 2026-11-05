@@ -20,6 +20,11 @@ public final class ModNetwork {
                 EchoRevealPayload.STREAM_CODEC,
                 EchoRevealPayload::handle
         );
+        registrar.playToClient(                                 // 远距离时服务端替客户端解析共振网络
+                ResonanceRulesPayload.TYPE,
+                ResonanceRulesPayload.STREAM_CODEC,
+                ResonanceRulesPayload::handle
+        );
         registrar.playToServer(                                 // ← 新增
                 SetFilterPayload.TYPE,
                 SetFilterPayload.STREAM_CODEC,

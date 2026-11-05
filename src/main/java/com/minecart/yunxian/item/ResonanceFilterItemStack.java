@@ -2,6 +2,7 @@ package com.minecart.yunxian.item;
 
 import com.minecart.yunxian.blockentity.ResonanceTableBlockEntity;
 import com.minecart.yunxian.registry.ModDataComponents;
+import com.minecart.yunxian.resonance.ResonanceRulesCache;
 import com.simibubi.create.content.logistics.filter.FilterItem;
 import com.simibubi.create.content.logistics.filter.FilterItemStack;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +63,10 @@ import java.util.function.Supplier;
  * 注意并集的一个后果，这是有意为之、但要心里有数：<b>一张台子的区块没加载时，它就不在并集里</b>
  * （{@code getAllPresent} 只给得出有效的方块实体），于是它那一份过滤规则会暂时消失。
  * 只有全部台子都不可达时才退化成"什么都不通过"。
+ * <p>
+ * 客户端还有一层退路：{@code CLIENT_LINKS} 只由被 tick 到的方块实体续期，玩家离开基地
+ * （超过模拟距离）后整张网络会空掉，于是远距离打开仓储界面时所有物品都会落进「未分类」。
+ * 这种情况下改用服务端推来的快照，见 {@link #fromServerSnapshot}。
  */
 public class ResonanceFilterItemStack extends FilterItemStack {
 
@@ -284,8 +290,17 @@ public class ResonanceFilterItemStack extends FilterItemStack {
         int reachable = 0;   // 够得着的台子数
         // 客户端读的是另一张表（CLIENT_LINKS），两边各自由 lazyTick 里的 keepAlive 维护。
         // 这里不碰 getBlockEntity，也就不会为了一个过滤器去加载区块。
-        for (LogisticallyLinkedBehaviour link : LogisticallyLinkedBehaviour.getAllPresent(
-                network, false, world.isClientSide)) {
+        Collection<LogisticallyLinkedBehaviour> links = LogisticallyLinkedBehaviour.getAllPresent(
+                network, false, world.isClientSide);
+
+        // 远距离时客户端那张表是空的：CLIENT_LINKS 只由<b>被 tick 到的</b>方块实体续期
+        // （{@code LogisticallyLinkedBehaviour#initialize} 在客户端直接 return，只有
+        // lazyTick → keepAlive 会往里写），台子的区块没加载就没人给它续。这时改用服务端
+        // 在响应仓储请求时推过来的解析结果 —— 否则仓储界面的分组会把所有物品塞进「未分类」。
+        if (links.isEmpty() && world.isClientSide)
+            return fromServerSnapshot(network);
+
+        for (LogisticallyLinkedBehaviour link : links) {
 
             // 再核一次 id：Create 的 LogisticallyLinkedBehaviour.remove() 只清服务端那张表
             // （CLIENT_LINKS 是私有的，够不到），所以客户端那张旧网络的条目要等 400 tick 才自然过期。
@@ -333,5 +348,32 @@ public class ResonanceFilterItemStack extends FilterItemStack {
         // 所以 filters 非空、结果就是"什么都不通过"。这是有意的 —— 一张读不出规则的台子
         // 不该把整个网络悄悄变成"全部放行"。
         return List.of(FilterItemStack.empty());
+    }
+
+    /**
+     * 客户端在本地读不到网络时（台子的区块没加载）用的退路：照抄服务端算好的结果。
+     * <p>
+     * 快照的三种情况与活链接那条路一一对应，判定语义不能走样：
+     * 服务端也一台都够不着（{@code tableCount == 0}）→ 空表，fail-closed；
+     * 一台够得着但台面全空（{@code rules} 空）→ 空过滤器哨兵，等于"全部放行"；
+     * 否则逐条包成过滤器。
+     * <p>
+     * 包的时候必须传副本：{@code FilterItemStack.of} 对 FilterItem 会
+     * {@code trimFilterComponents}，抹掉附魔与属性修饰符。快照里的栈是给多个判定共用的，
+     * 直接传等于把缓存里的数据改掉。
+     */
+    private static List<FilterItemStack> fromServerSnapshot(UUID network) {
+        ResonanceRulesCache.Snapshot snapshot = ResonanceRulesCache.get(network);
+        if (snapshot == null)
+            return List.of();                            // 服务端还没推过 → 维持 fail-closed
+        if (snapshot.tableCount() == 0)
+            return List.of();                            // 服务端此刻也一台都够不着
+        if (snapshot.rules().isEmpty())
+            return List.of(FilterItemStack.empty());      // 台面全空 = 全集
+
+        List<FilterItemStack> filters = new ArrayList<>(snapshot.rules().size());
+        for (ItemStack onTable : snapshot.rules())
+            filters.add(FilterItemStack.of(onTable.copy()));
+        return filters;
     }
 }
