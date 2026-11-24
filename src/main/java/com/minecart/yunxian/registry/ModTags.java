@@ -80,6 +80,22 @@ public final class ModTags {
             ResourceLocation.fromNamespaceAndPath("create", "fan_transparent"));
 
     /**
+     * 机械动力的「可被动态结构控制器控制」标签 {@code create:contraption_controlled}（<b>物品</b>标签）。
+     * <p>
+     * 动态结构控制器上的过滤器槽位只认这个标签：方块实体建槽时用
+     * {@code FilteringBehaviour#withPredicate(AllItemTags.CONTRAPTION_CONTROLLED::matches)} 当门禁，
+     * 不在标签里的物品 {@code setFilter} 直接失败，右键只有一声拒绝音加「过滤器无效」的提示。
+     * 槽位收下之后，物品会被写成控制器的过滤器（装配进结构数据里的 Filter），运动时由
+     * {@code Contraption#setActorsActive} 拿它跟每个 actor 的 {@code canBeDisabledVia} 比对。
+     * <p>
+     * 智能钻头这边不用另写代码：{@code SmartDrillMovementBehaviour} 继承 {@code DrillMovementBehaviour}，
+     * 没覆写 {@code canBeDisabledVia}，默认返回的就是方块自身的物品。差的只是这一条标签——
+     * 没有它，控制器只能对整台结构一刀切；有了它，智能钻头才能像机械钻头那样被单独拎出来开关。
+     */
+    public static final TagKey<Item> CONTRAPTION_CONTROLLED = TagKey.create(Registries.ITEM,
+            ResourceLocation.fromNamespaceAndPath("create", "contraption_controlled"));
+
+    /**
      * 标记「免疫鼓风机 / 分散网风力」的盔甲（<b>物品</b>标签），数据包路径
      * {@code data/create_crystal_industry/tags/item/fan_immune.json}。
      * <p>

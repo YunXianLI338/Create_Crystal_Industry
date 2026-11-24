@@ -82,6 +82,10 @@ public class ModItemTagsProvider extends net.minecraft.data.tags.ItemTagsProvide
         tag(TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("create", "upright_on_belt")))
                 .add(ModItems.FLAMMABLE_ICE_SLURRY_BOTTLE.get());
 
+        // 智能钻头要能被放进动态结构控制器的过滤器槽位：那个槽位用 create:contraption_controlled
+        // 筛物品（理由与判定链见 ModTags#CONTRAPTION_CONTROLLED），不在标签里就提示「过滤器无效」。
+        tag(ModTags.CONTRAPTION_CONTROLLED).add(ModBlocks.SMART_DRILL.get().asItem());
+
         // 可燃冰的石材类型标签：整套装饰方块里除台阶外全部登记（判定规则与理由见
         // ModTags#FLAMMABLE_ICE_STONE_TYPE）。直接遍历唯一清单派生，以后加变体不用动这里。
         IntrinsicTagAppender<Item> stoneType = tag(ModTags.FLAMMABLE_ICE_STONE_TYPE);
