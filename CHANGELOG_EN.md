@@ -12,11 +12,12 @@ section at the top.
 
 ---
 
-## 1.0.12 · 2026-11-23
+## 1.0.12 · 2026-11-24
 
 ### Added
 
 - Flame Breath dries Wet Sponges into Sponges.
+- With night vision on, the four front lenses of the worn Night Vision Goggles no longer follow the ambient light and stay visible in the dark.
 
 ### Changed
 

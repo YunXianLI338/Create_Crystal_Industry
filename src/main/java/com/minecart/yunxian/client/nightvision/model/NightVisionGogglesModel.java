@@ -11,7 +11,8 @@ import net.neoforged.neoforge.client.model.BakedModelWrapper;
 
 public class NightVisionGogglesModel extends BakedModelWrapper<BakedModel> {
     private final BakedModel goggles3d;
-    private final BakedModel goggles3dOn;
+    /** 开启态：交给自定义渲染器画，四个镜片面固定满亮度 */
+    private final BakedModel goggles3dOnGlow;
 
     /** 当前正在被渲染的、佩戴这副护目镜的生物（玩家/盔甲架等） */
     public static final ThreadLocal<LivingEntity> RENDERING_ENTITY = new ThreadLocal<>();
@@ -19,14 +20,14 @@ public class NightVisionGogglesModel extends BakedModelWrapper<BakedModel> {
     public NightVisionGogglesModel(BakedModel itemModel, BakedModel goggles3d, BakedModel goggles3dOn) {
         super(itemModel);
         this.goggles3d = goggles3d;
-        this.goggles3dOn = goggles3dOn;
+        this.goggles3dOnGlow = new GlowingLensItemModel(goggles3dOn);
     }
 
     @Override
     public BakedModel applyTransform(ItemDisplayContext displayContext, PoseStack poseStack, boolean leftHanded) {
         if (displayContext == ItemDisplayContext.HEAD) {
             LivingEntity entity = RENDERING_ENTITY.get();
-            BakedModel active = shouldShowOn(entity) ? goggles3dOn : goggles3d;
+            BakedModel active = shouldShowOn(entity) ? goggles3dOnGlow : goggles3d;
             return active.applyTransform(displayContext, poseStack, leftHanded);
         }
         return super.applyTransform(displayContext, poseStack, leftHanded);
