@@ -1,5 +1,9 @@
 {
     "values": [
-        "#c:ores"
+        "#c:ores",
+        "#c:storage_blocks/raw_iron",
+        "#c:storage_blocks/raw_copper",
+        "#c:storage_blocks/raw_gold",
+        "#c:storage_blocks/raw_zinc"
     ]
 }

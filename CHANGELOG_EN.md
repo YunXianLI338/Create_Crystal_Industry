@@ -18,6 +18,8 @@ section at the top.
 
 - Flame Breath dries Wet Sponges into Sponges.
 - With night vision on, the four front lenses of the worn Night Vision Goggles no longer follow the ambient light and stay visible in the dark.
+- With no filter item inside, the Echo Spyglass now also reveals Blocks of Raw Iron, Raw Copper, Raw Gold and Raw Zinc.
+- The Contraption Controls filter slot now accepts Smart Drills, so a Smart Drill can be switched off on its own, just like a Mechanical Drill.
 
 ### Changed
 
