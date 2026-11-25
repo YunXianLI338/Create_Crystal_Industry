@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 
@@ -27,6 +28,11 @@ import java.util.Map;
  * （原版掉落表走 {@code BlockDropsEvent}、智能钻头自己 popResource、脚本方块走
  * {@link com.minecart.yunxian.registry.ScriptedBlockDrops}、别的模组的机器各写各的），
  * 但终点都是"一个 ItemEntity 进入世界"，钩在这里一次覆盖全部，且不用改动任何一条掉落路径。
+ * <p>
+ * <b>读方块只读已经就绪的区块</b>：这个事件<b>可能</b>发生在另一个区块的 post-load 任务内部
+ * （NeoForge 对该事件的 javadoc 专门警告过），此时任何会"等区块加载"的读取都会让两个区块互相等待，
+ * 把服务端主线程永久挂住（1.0.12 的 server hang 就是这么来的）。所以这里一律先用 {@code getChunkNow}
+ * 取已经完整的 {@link LevelChunk} 再读，绝不走 {@code level.getBlockState} / {@code level.getBlockEntity}。
  * <p>
  * <b>怎么找到那台吸尘器</b>：两条路，都只负责"把候选机器找出来"，收不收一律由
  * {@link MechanicalCleanerBlockEntity#tryAbsorbDrop} 判定——它内部同时认轴线风场和喷嘴场
@@ -62,7 +68,9 @@ public final class CleanerDropAbsorption {
 
     /** 事件入口（在 {@code Yunxian} 的构造器里挂到游戏事件总线上） */
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
-        // 只处理服务端新生成的物品：客户端不持有库存，从存档读回来的实体本来就已经在吸尘器的账上了
+        // 只处理服务端新生成的物品：客户端不持有库存。
+        // loadedFromDisk 只在旧存档迁移那条路上为 true，随区块从存档载回的实体同样是 false，
+        // 所以真正防住"边读方块边等区块加载"的是下面只读已就绪区块的读法，不是这个标志
         if (!(event.getLevel() instanceof ServerLevel level) || event.loadedFromDisk()) {
             return;
         }
@@ -123,7 +131,10 @@ public final class CleanerDropAbsorption {
      * 那部分交给 {@link #absorbByNozzle} 查登记表。换句话说，这里保持"廉价的、几乎必中的一种形状"，
      * 而把"昂贵的、几乎必不中的形状"换成一次查表，不让绝大多数普通掉落物为喷嘴付账。
      * <p>
-     * 每个方向上遇到未加载的区块就停——风场不会跨过未加载的区块，方块实体也取不到。
+     * 每个方向上遇到还没就绪的区块就停——风场不会跨过未加载的区块，方块实体也取不到。
+     * 注意"没加载"和"已排队但还在生成"都不能读：直接 {@code level.getBlockState} 会让主线程走
+     * {@code managedBlock} 等它生成完，而本事件可能正发生在另一个区块的 post-load 任务里，
+     * 两边互等就会把服务端主线程永久挂住。所以这里只用 {@code getChunkNow} 拿已经完整的区块再读。
      */
     private static boolean absorbByAxis(ServerLevel level, Vec3 point, BlockPos origin, ItemStack stack) {
         Block block = ModBlocks.MECHANICAL_CLEANER.get();
@@ -133,21 +144,36 @@ public final class CleanerDropAbsorption {
             cursor.set(origin);
             for (int step = 1; step <= MechanicalCleanerBlockEntity.SUCK_RANGE_MAX; step++) {
                 cursor.move(direction);
-                if (!level.isLoaded(cursor)) {
+                LevelChunk chunk = readyChunk(level, cursor);
+                if (chunk == null) {
                     break;
                 }
-                if (!level.getBlockState(cursor).is(block)) {
+                if (!chunk.getBlockState(cursor).is(block)) {
                     continue;
                 }
                 // 判定（轴线边界 / 喷嘴场 / 视线 / 过滤 / 容量）全在吸尘器那边，
                 // 与按 tick 收实体那条路共用同一套口径
-                if (level.getBlockEntity(cursor) instanceof MechanicalCleanerBlockEntity cleaner
+                if (chunk.getBlockEntity(cursor) instanceof MechanicalCleanerBlockEntity cleaner
                         && cleaner.tryAbsorbDrop(point, stack, cleaner.getMaxDistance())) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    /**
+     * 目标格所在区块"已经完整"时返回它，否则 {@code null}。
+     * <p>
+     * 不能用 {@code level.isLoaded} 当守卫：它只说明区块 holder 已按 FULL 票级排队，区块可能还在生成，
+     * 这时 {@code level.getBlockState} / {@code level.getBlockEntity} 会走 {@code managedBlock} 等它生成完；
+     * 而本类是在实体入场事件里被调到的，该事件可能正发生在另一个区块的 post-load 任务内部
+     * （NeoForge 对 {@code EntityJoinLevelEvent} 的 javadoc 专门警告过），两个区块互等就是主线程永久挂住。
+     * {@code getChunkNow} 只查已经挂上 {@link LevelChunk} 的区块，绝不等待、绝不触发加载；
+     * 与 {@link com.minecart.yunxian.item.EchoScanner} 的读法是同一招。
+     */
+    private static LevelChunk readyChunk(ServerLevel level, BlockPos pos) {
+        return level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
     }
 
     /**
@@ -162,9 +188,14 @@ public final class CleanerDropAbsorption {
      * 粗筛只用整数比较，真正的边界（视线、过滤、容量）留给 {@code tryAbsorbDrop}——这里多放进来一格
      * 没关系，那边会拦；少放就会漏收，所以半径取的是上限而不是当前真实半径。
      * <p>
-     * 顺带把失效的登记项剔掉，两种：所在区块没加载了（里面的方块实体已经没了），
-     * 或者区块还在但那台机器已经不在了（被拆掉、换成别的方块）。不在这里剔，这张表会随
-     * "走过的地方越来越多"只长不缩——反查这一侧每几十 tick 才被调到一次，成本可以忽略。
+     * 读那台机器之前先确认它的区块已经完整（{@code getChunkNow}）：这张表是懒清理的，机器可能在前一刻
+     * 随区块卸载、也可能已被拆掉，而 {@code level.getBlockEntity} 在区块还没就绪时会阻塞等待生成——
+     * 本事件正好可能发生在别的区块的 post-load 任务里，等下去就是死锁。
+     * <p>
+     * 顺带把失效的登记项剔掉：区块确实没加载了（票级判据），或区块已经就绪、机器却已经不在了
+     * （被拆掉、换成别的方块）。区块"还在生成"时这一拍直接跳过、不剔项，等它就绪了自然会走上面两条判定。
+     * 不在这里剔，这张表会随"走过的地方越来越多"只长不缩——反查这一侧每几十 tick 才被调到一次，
+     * 成本可以忽略。
      */
     private static boolean absorbByNozzle(ServerLevel level, Vec3 point, BlockPos origin, ItemStack stack) {
         Map<BlockPos, BlockPos> fields = NozzleFieldIndex.of(level);
@@ -177,15 +208,21 @@ public final class CleanerDropAbsorption {
             Map.Entry<BlockPos, BlockPos> entry = cursor.next();
             BlockPos nozzlePos = entry.getValue();
             if (!level.isLoaded(nozzlePos)) {
+                // 票级判据：区块确实没了，里面的方块实体也早就没了，剔掉
                 cursor.remove();
                 continue;
             }
             if (cubeDistance(origin, nozzlePos) > radius) {
                 continue;
             }
-            if (!(level.getBlockEntity(entry.getKey()) instanceof MechanicalCleanerBlockEntity cleaner)) {
-                // 机器已经没了（被拆掉、换成别的方块）：上面那句 isLoaded 只拦得住"区块没加载"，
-                // 拦不住"区块还在但机器不在了"，所以这里顺手把登记项剔掉
+            BlockPos cleanerPos = entry.getKey();
+            LevelChunk chunk = readyChunk(level, cleanerPos);
+            if (chunk == null) {
+                // 机器所在区块还没就绪：这一拍判不了，跳过
+                continue;
+            }
+            if (!(chunk.getBlockEntity(cleanerPos) instanceof MechanicalCleanerBlockEntity cleaner)) {
+                // 区块已就绪、机器却不在了：剔掉这条登记
                 cursor.remove();
                 continue;
             }

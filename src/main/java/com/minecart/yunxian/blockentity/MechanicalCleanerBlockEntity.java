@@ -47,6 +47,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -850,6 +851,52 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         return worldPosition.relative(getBlockState().getValue(MechanicalCleanerBlock.FACING));
     }
 
+    // ==================== 读"别的方块"：只读已经就绪的区块 ====================
+
+    /**
+     * 目标格所在区块已经完整时返回它，否则 {@code null}（客户端同样返回 {@code null}）。
+     * <p>
+     * 为什么不能用 {@code level.isLoaded} 当守卫：它只说明区块 holder 已按 FULL 票级排队，区块可能
+     * 还在生成；这时 {@code level.getBlockState} / {@code level.getBlockEntity} 会走
+     * {@code ServerChunkCache#getChunk} 的 {@code managedBlock} 等它生成完。按 tick 调用只是卡一下，
+     * 但"掉落物直接入库存"那条路是在实体入场事件里被调到的，而该事件可能正发生在另一个区块的
+     * post-load 任务内部（NeoForge 对该事件的 javadoc 专门警告过）：两个区块互相等待就会把服务端
+     * 主线程永久挂住。{@code getChunkNow} 只查已经挂上 {@link LevelChunk} 的区块，绝不等待、绝不触发加载。
+     */
+    @Nullable
+    private LevelChunk readyChunkAt(BlockPos pos) {
+        if (!(level instanceof ServerLevel serverLevel))
+            return null;
+        return serverLevel.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+    }
+
+    /**
+     * 读别的方块实体：区块还没就绪就当那里什么都没有，绝不触发加载。
+     * 客户端保持原样——客户端读未加载区块拿到的是空区块，本来就不会阻塞。
+     */
+    @Nullable
+    private BlockEntity getBlockEntityIfReady(BlockPos pos) {
+        if (!(level instanceof ServerLevel))
+            return level.getBlockEntity(pos);
+        LevelChunk chunk = readyChunkAt(pos);
+        return chunk == null ? null : chunk.getBlockEntity(pos);
+    }
+
+    /** 一条线段两端所跨的全部区块都完整时返回 {@code true}（最多 2×2 个，成本可忽略） */
+    private boolean chunksReadyForLine(Vec3 from, BlockPos to) {
+        if (!(level instanceof ServerLevel serverLevel))
+            return true;
+        int minX = Mth.floor(Math.min(from.x, to.getX())) >> 4;
+        int maxX = Mth.floor(Math.max(from.x, to.getX())) >> 4;
+        int minZ = Mth.floor(Math.min(from.z, to.getZ())) >> 4;
+        int maxZ = Mth.floor(Math.max(from.z, to.getZ())) >> 4;
+        for (int chunkX = minX; chunkX <= maxX; chunkX++)
+            for (int chunkZ = minZ; chunkZ <= maxZ; chunkZ++)
+                if (serverLevel.getChunkSource().getChunkNow(chunkX, chunkZ) == null)
+                    return false;
+        return true;
+    }
+
     /**
      * 分散网（喷嘴）覆盖的外接盒：正前方挂着喷嘴且气流长度 &gt; 0 时返回
      * "以喷嘴为中心、半边长 = {@link #nozzleFieldHalfExtent()} 的立方体"的外接 AABB，否则 {@code null}。
@@ -865,7 +912,8 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
         if (airCurrent == null || halfExtent <= 0)
             return null;
         BlockPos nozzlePos = getNozzlePos();
-        if (!(level.getBlockEntity(nozzlePos) instanceof NozzleBlockEntity))
+        // 掉落物入场那条路也会走到这里：区块还没就绪就当没有喷嘴场，绝不读未就绪的区块
+        if (!(getBlockEntityIfReady(nozzlePos) instanceof NozzleBlockEntity))
             return null;
         Vec3 center = VecHelper.getCenterOf(nozzlePos);
         return new AABB(center, center).inflate(halfExtent);
@@ -883,6 +931,9 @@ public class MechanicalCleanerBlockEntity extends KineticBlockEntity
      * {@link CollisionContext#empty()}。
      */
     boolean lineOfSightToNozzle(Vec3 from, CollisionContext collisionContext, BlockPos nozzlePos) {
+        // 射线扫过的区块都得先就绪，否则 level.clip 会为半路上的区块等生成（见 readyChunkAt）
+        if (!chunksReadyForLine(from, nozzlePos))
+            return false;
         ClipContext context = new ClipContext(from, VecHelper.getCenterOf(nozzlePos),
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, collisionContext);
         BlockPos hitPos = level.clip(context).getBlockPos();
